@@ -65,25 +65,14 @@ function split(path) {
   compounded = _.uniq(compounded)
 
   return compounded
-
 }
 
 /********************************** Statil ***********************************/
 
 /**
  * Statil constructor. Takes a hash of options and generates a vanilla statil.
- * Supported options:
- *
- * @name imports
- * @type Hash
- * @description Hash table of default attributes and methods that will be made
- * available to each template.
- *
- * @name locals
- * @type Hash
- * @description Hash table of default values that will be made available to
- * each template as a part of the locals object (the data hash passed to the
- * template when rendering).
+ * The options will be enhanced with some useful defaults and passed to
+ * lodash's _.template parser when compiling templates.
  */
 function Statil(options) {
   // Self-correct when called without 'new'.
