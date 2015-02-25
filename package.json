@@ -9,6 +9,10 @@
   "author": "Mitranim",
   "license": "MIT",
   "keywords": ["static", "site", "generator"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mitranim/statil.git"
+  },
   "dependencies": {
     "glob": "^4.4.0",
     "lodash": "^3.3.1"
