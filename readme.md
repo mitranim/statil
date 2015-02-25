@@ -21,6 +21,13 @@ descendant, it will be automatically enclosed in each parent 'index'. The inner
 content is transcluded with the `<%= $content %>` directive; you choose where to
 put it, if at all.
 
+### What's a Static Site?
+
+If you're unfamiliar with the idea, a static site is a site pre-rendered from a
+collection of partial templates into a collection of complete, isolated html
+pages. Then it may be served as static files on a service like Github Pages.
+It's great for stateless sites like personal blogs or repository documentations.
+
 ## Installation and Usage
 
 In a shell:
@@ -34,11 +41,12 @@ In a build script:
 ```javascript
 var Statil = require('statil')
 
-// Create a new statil instance with the given options. The options are enhanced
-// with some useful defaults and passed to lodash's _.template function.
+// Creates a new statil instance with the given options. The options will be
+// enhanced with some useful defaults and passed to lodash's _.template
+// function when compiling templates (see below).
 var statil = new Statil(<options>)
 
-// Walk the given directory and compile a template from each file.
+// Walks the given directory and compiles a template from each file.
 statil.scanDirectory(<dirname>)
 
 // Renders an individual template at the given path. The locals are enhanced
