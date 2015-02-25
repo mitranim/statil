@@ -1,0 +1,16 @@
+{
+  "name": "statil",
+  "version": "0.0.1",
+  "description": "Most lightweight static site generator ever.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mitranim",
+  "license": "MIT",
+  "keywords": ["static", "site", "generator"],
+  "dependencies": {
+    "glob": "^4.4.0",
+    "lodash": "^3.3.1"
+  }
+}
