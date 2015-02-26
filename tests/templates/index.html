@@ -1,0 +1,19 @@
+<% $entitle('test page', $) %>
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= $title %></title>
+  </head>
+
+  <body>
+
+    <!-- Navbar -->
+    <%= $include('partials/navbar', $) %>
+
+    <!-- Transcluded content -->
+    <%= $content %>
+
+  </body>
+
+</html>

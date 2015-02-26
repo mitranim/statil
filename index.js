@@ -127,13 +127,13 @@ function Statil(options) {
 Statil.prototype.register = function(source, path, srcDir) {
   // Validate the arguments.
   if (typeof source !== 'string') {
-    throw new Error("source must be a string")
+    throw new Error('source must be a string')
   }
   if (typeof path !== 'string' || !path) {
-    throw new Error("path must be a non-empty string")
+    throw new Error('path must be a non-empty string')
   }
   if (srcDir != null && typeof srcDir !== 'string') {
-    throw new Error("srcDir must be a string")
+    throw new Error('srcDir must be a string')
   }
 
   // If srcDir is given, rebase the path.
@@ -161,19 +161,16 @@ Statil.prototype.register = function(source, path, srcDir) {
  */
 Statil.prototype.scanDirectory = function(srcDir) {
   if (typeof srcDir !== 'string' || !srcDir) {
-    throw new Error("please specify a path to a template directory to scan")
+    throw new Error('please specify a path to a template directory to scan')
   }
-
-  // Store self for use in lambdas.
-  var self = this
 
   // Read the paths of the templates in the given directory.
   var paths = glob.sync(pt.join(srcDir, '**/*'), {nodir: true, nonull: true})
 
   // Read and register each file.
   paths.forEach(function(path) {
-    self.register(fs.readFileSync(path, 'utf-8'), path, srcDir)
-  })
+    this.register(fs.readFileSync(path, 'utf-8'), path, srcDir)
+  }, this)
 }
 
 /**
@@ -223,32 +220,32 @@ Statil.prototype.imports = function() {
 
   /**
    * Renders the template with the given path and the given data and returns
-   * the result.
+   * the result. The data is cloned before it's passed to the renderer.
    * @param String path
    * @param Hash   data
    */
   imports.$include = function(path, data) {
-    // Clone the data object and provide the default locals.
+    // Clone the data object and pass arguments to #renderOne.
     data = clone(data)
-    self.locals(data)
     return self.renderOne(path, data)
   }
 
   /**
-   * Prepends or assigns the given string to the page's title. This mutates
-   * the title in the data if called several times from one or different
-   * templates.
+   * Prepends or assigns the given string to the page's title stored as
+   * 'data.$title'. This mutates the title, prepending new parts, if called
+   * several times over the data's lifecycle. A non-string or empty title is
+   * ignored.
    * @param String title
    * @param Hash   data
    */
-  imports.$title = function(title, data) {
+  imports.$entitle = function(title, data) {
     if (!_.isObject(data)) return
-    if (typeof title !== 'string') return
+    if (typeof title !== 'string' || !title) return
 
-    if (typeof data.title !== 'string' || !data.title) {
-      data.title = title
+    if (typeof data.$title !== 'string' || !data.$title) {
+      data.$title = title
     } else {
-      data.title += ' | ' + title
+      data.$title = title + ' | ' + data.$title
     }
   }
 
@@ -290,82 +287,53 @@ Statil.prototype.imports = function() {
  * @param Hash data
  */
 Statil.prototype.locals = function(data) {
-  if (!_.isObject(data)) throw new Error("data must be an object")
+  if (!_.isObject(data)) throw new Error('data must be an object')
 
   // Make sure '$content' is always defined and is a string.
   if (typeof data.$content !== 'string') data.$content = ''
 
-  // Make sure 'title' is always defined and is a string.
-  if (typeof data.title !== 'string') data.title = ''
+  // Make sure '$title' is always defined and is a string.
+  if (typeof data.$title !== 'string') data.$title = ''
 
   // Reference the data itself as '$'.
   data.$ = data
 }
 
 /**
- * Resolves the given compounded path against own template cache. The last name
- * in the path is assumed to be a template name. If it's not 'index', then
- * a template must be found by that name, otherwise an error is thrown. If the
- * last name is 'index', then we're going to be lenient: if a template at this
- * path is not found, we're using a minimal pass-through substitute that simply
- * transcludes the content.
+ * Resolves the given compounded path against own template cache. The last
+ * name in the path is assumed to be a template name. If it's not 'index',
+ * then a template must be found by that name, otherwise an error is thrown.
+ * If the last name is 'index', then we're going to be lenient: if a template
+ * at this path is not found, we're using a minimal pass-through substitute
+ * that simply transcludes the content.
  *
  * Returns the found or substituted template.
  *
+ * @param   String
  * @returns Function
  */
 Statil.prototype.resolve = function(path) {
+  if (typeof path !== 'string' || !path) {
+    throw new Error('the argument to Statil#resolve must be a non-empty string')
+  }
   // Get the base name.
   var name = pt.basename(path)
   // If it's not index, mandate some kind of template.
   if (name !== 'index' && !this.templates[path]) {
-    throw new Error("template not found at path: " + path)
+    throw new Error('template not found at path: ' + path)
   }
   // Otherwise try to return a template or use a substitute.
   return this.templates[path] || this.transclude
 }
 
 /**
- * Renders the template at the given path. If the path is composite, rendering
- * happens hierarchically, depth-first. First, we render the deepest template,
- * and assign the result to the key '$content' in the data hash. Then we look
- * for 'index' in its parent directory and render that, passing the clone of
- * the data hash and assigning the new result as '$content'. When the path is
- * exhausted, the initial 'index' is rendered. When an 'index' is missing, we
- * use a substitute that simply transcludes the '$content'. Throws an error if
- * lookup or rendering fails.
- * @returns String
- */
-Statil.prototype.render = function(path, data) {
-  /**
-   * For use in lambdas.
-   * @type Statil
-   */
-  var self = this
-
-  // Make sure data is an object.
-  if (!_.isObject(data)) data = Object.create(null)
-
-  // Provide the default locals to the data.
-  this.locals(data)
-
-  // Assign the path once. The path should never be reassigned during a
-  // recursive render chain.
-  if (!data.$path) data.$path = path
-
-  // Get the paths at which to render.
-  var compounded = split(path)
-
-  // Render the result hierarchically.
-  _.eachRight(compounded, function(compoundedPath) {
-    data.$content = self.renderOne(compoundedPath, data)
-  })
-
-  return data.$content
-}
-
-/**
  * Renders the template at the given path without hierarchical lookup.
+ *
+ * This is only defined for a non-empty string path. Other inputs cause an
+ * error to be thrown. The data argument is optional.
+ *
+ * @param   String path
+ * @param   Hash   data (optional)
  * @returns String
  */
 Statil.prototype.renderOne = function(path, data) {
@@ -374,7 +342,7 @@ Statil.prototype.renderOne = function(path, data) {
   // Make sure data is an object.
   if (!_.isObject(data)) data = Object.create(null)
 
-  // Provide the default locals to the data.
+  // Provide default locals to the data.
   this.locals(data)
 
   // Assign the path once. The path should never be reassigned during a
@@ -386,18 +354,58 @@ Statil.prototype.renderOne = function(path, data) {
 }
 
 /**
+ * Renders the template at the given path. If the path is composite, rendering
+ * happens hierarchically, depth-first. First, we render the deepest template,
+ * and assign the result to the key '$content' in the data hash. Then we look
+ * for 'index' in its parent directory and render that, passing the clone of
+ * the data hash and assigning the new result as '$content'. When the path is
+ * exhausted, the initial 'index' is rendered. When an 'index' is missing, we
+ * use a substitute that simply transcludes the '$content'. Throws an error if
+ * lookup or rendering fails.
+ *
+ * This is only defined for a non-empty string path. Other inputs cause an
+ * error to be thrown. The data argument is optional.
+ *
+ * @param   String path
+ * @param   Hash   data (optional)
+ * @returns String
+ */
+Statil.prototype.render = function(path, data) {
+  // Make sure the path is a non-empty string.
+  if (typeof path !== 'string' || !path) {
+    throw new Error('the argument to Statil#render must be a non-empty string')
+  }
+
+  // Make sure data is an object.
+  if (!_.isObject(data)) data = Object.create(null)
+
+  // Assign the path once. The path should never be reassigned during a
+  // recursive render chain.
+  if (!data.$path) data.$path = path
+
+  // Get the paths at which to render.
+  var compounded = split(path)
+
+  // Render the result hierarchically.
+  _.eachRight(compounded, function(compoundedPath) {
+    data.$content = this.renderOne(compoundedPath, data)
+  }, this)
+
+  return data.$content
+}
+
+/**
  * Renders all templates, passing the given data. Returns them as a map of
  * paths to rendered strings.
- * @param Hash data (optional)
+ * @param   Hash   data (optional)
  * @returns String
  */
 Statil.prototype.renderAll = function(data) {
   var buffer = Object.create(null)
-  var self = this
 
-  _.each(self.templates, function(t, path) {
-    buffer[path] = self.render(path, clone(data))
-  })
+  _.each(this.templates, function(t, path) {
+    buffer[path] = this.render(path, clone(data))
+  }, this)
 
   return buffer
 }
