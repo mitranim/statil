@@ -659,21 +659,22 @@ function templateDir() {
 /********************************* Utilities *********************************/
 
 /**
- * Calls the given func without arguments and with lots of different
+ * Calls the given function without arguments and with lots of different
  * arguments.
  * @param Function
  */
-function callWithDifferentInputs(func) {
-  func()
-  func(123)
-  func("what's up honeybunch")
-  func(undefined)
-  func(null)
-  func(NaN)
-  func(true)
-  func(/reg/)
-  func(function() {})
-  func([])
-  func({})
-  func(Object.create(null))
+function callWithDifferentInputs(fn) {
+  fn()
+  fn(123)
+  fn('')
+  fn("what's up honeybunch")
+  fn(undefined)
+  fn(null)
+  fn(NaN)
+  fn(true)
+  fn(/reg/)
+  fn(function() {})
+  fn([])
+  fn({})
+  fn(Object.create(null))
 }

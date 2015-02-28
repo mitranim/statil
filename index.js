@@ -73,6 +73,7 @@ function split(path) {
  * Statil constructor. Takes a hash of options and generates a vanilla statil.
  * The options will be enhanced with some useful defaults and passed to
  * lodash's _.template parser when compiling templates.
+ * @param Hash
  */
 function Statil(options) {
   // Self-correct when called without 'new'.
@@ -316,12 +317,15 @@ Statil.prototype.resolve = function(path) {
   if (typeof path !== 'string' || !path) {
     throw new Error('the argument to Statil#resolve must be a non-empty string')
   }
+
   // Get the base name.
   var name = pt.basename(path)
+
   // If it's not index, mandate some kind of template.
   if (name !== 'index' && !this.templates[path]) {
     throw new Error('template not found at path: ' + path)
   }
+
   // Otherwise try to return a template or use a substitute.
   return this.templates[path] || this.transclude
 }

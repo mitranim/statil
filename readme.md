@@ -17,16 +17,61 @@ compiled files. That's it. It wants to be just a tiny part of your build chain.
 Another difference is that statil understands hierarchical templating. It
 assumes the `index` file (extensions are ignored) in each directory to be a
 layout that encloses its sibling templates and descendant templates in
-subdirectories. When rendering a sibling or descendant, it will be automatically
+subdirectories. When rendering a sibling or descendant, it's automatically
 enclosed in each parent layout. Transclusion happens at the `<%= $content %>`
-directive.
+directive. You never have to explicitly define layouts and blocks.
 
 ### What's a Static Site?
 
 If you're unfamiliar with the idea, a static site is a site pre-rendered from a
 collection of partial templates into a collection of complete, isolated html
 pages. Then it may be served as static files on a service like GitHub Pages.
-It's great for stateless sites like repository documentation or a personal blog.
+It's great for stateless sites like repository documentation or personal pages.
+
+## Example
+
+Suppose you have a project structure like this:
+
+```
+./ ═╦═ ...
+    ╚═ templates ═╦═ index.html
+                  ╠═ partials ═╦═ navbar.html
+                  ╠═ ...       ╚═ footer.html
+                  ╚═ stuff ═╦═ index.html
+                            ╠═ one.html
+                            ╠═ ...
+                            ╚═ ten.html
+```
+
+When you scan and render `templates` with Statil, it expects:
+* `templates/index` to wrap every other template;
+* `templates/stuff/index` to wrap `one` and other templates in that directory
+  (and to be wrapped by `templates/index`);
+* ... ad infinitum.
+
+In other words, when rendering any given template, the intent is to sequentially
+wrap it into each `index` file ancestral to it. Each `index` is a layout for its
+siblings (files in the same directory) and descendants (files in its sibling
+directories).
+
+Your `templates/index` might look like this:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= $title || 'my awesome site' %></title>
+</head>
+<body>
+  <%= $include('partials/navbar', $) %>
+  <%= $content || $include('partials/index', $) %>
+  <%= $include('partials/footer', $) %>
+</body>
+</html>
+```
+
+Where `$include` explicitly chooses a file to import, and `$content` transcludes
+the descendant template that is currently being rendered.
 
 ## Installation and Usage
 
