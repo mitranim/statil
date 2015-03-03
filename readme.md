@@ -15,11 +15,13 @@ your wife. `statil` takes a directory of templates and spits out a bunch of
 compiled files. That's it. It wants to be just a tiny part of your build chain.
 
 Another difference is that statil understands hierarchical templating. It
-assumes the `index` file (extensions are ignored) in each directory to be a
-layout that encloses its sibling templates and descendant templates in
-subdirectories. When rendering a sibling or descendant, it's automatically
-enclosed in each parent layout. Transclusion happens at the `<%= $content %>`
-directive. You never have to explicitly define layouts and blocks.
+assumes the `index` file (ignoring extensions) in each directory to be a layout
+that encloses its sibling templates and descendant templates in subdirectories.
+When rendering each file, statil automatically wraps it into its sibling `index`
+(if available) and each ancestral `index` (if available). Transclusion is done
+at the `<%= $content %>` directive. It's an implicit hierarchy that defines the
+route hierarchy of your site. You don't have to explicitly define layouts and
+blocks.
 
 ### What's a Static Site?
 
@@ -43,7 +45,7 @@ Suppose you have a project structure like this:
                             ╚═ ten.html
 ```
 
-When you scan and render `templates` with Statil, it expects:
+When you scan and render `templates` with statil, it expects:
 * `templates/index` to wrap every other template;
 * `templates/stuff/index` to wrap `one` and other templates in that directory
   (and to be wrapped by `templates/index`);
@@ -59,14 +61,14 @@ Your `templates/index` might look like this:
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title><%= $title || 'my awesome site' %></title>
-</head>
-<body>
-  <%= $include('partials/navbar', $) %>
-  <%= $content || $include('partials/index', $) %>
-  <%= $include('partials/footer', $) %>
-</body>
+  <head>
+    <title><%= $title || 'my awesome site' %></title>
+  </head>
+  <body>
+    <%= $include('partials/navbar', $) %>
+    <%= $content || $include('partials/index', $) %>
+    <%= $include('partials/footer', $) %>
+  </body>
 </html>
 ```
 
