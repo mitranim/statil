@@ -201,9 +201,8 @@ Statil.prototype.templateOptions = function() {
 
 /**
  * Generates a hash of default imports to pass to lodash's template parser. We
- * define them within a function to better isolate templates from each other.
- * Full isolation is impossible due to how lodash handles template security
- * (exposing the global env, etc).
+ * define them within a method because at least one of them needs to closure
+ * the statil it's called on.
  * @returns Hash
  */
 Statil.prototype.imports = function() {

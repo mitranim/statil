@@ -75,6 +75,11 @@ Your `templates/index` might look like this:
 Where `$include` explicitly chooses a file to import, and `$content` transcludes
 the descendant template that is currently being rendered.
 
+Each call to `render` shares one mutable locals object between the templates
+that are being rendered. In combination with the depth-first approach, this lets
+you propagate meta information upwards to the root template, which is exploited
+by the built-in `$entitle` method and the `$title` meta string.
+
 ## Installation and Usage
 
 In a shell:
