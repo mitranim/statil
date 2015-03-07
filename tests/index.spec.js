@@ -37,8 +37,6 @@ describe('statil constructor', function() {
     expect(this.statil.options).toEqual(jasmine.any(Object))
     expect(this.statil.sources).toEqual(jasmine.any(Object))
     expect(this.statil.templates).toEqual(jasmine.any(Object))
-    expect(this.statil.paths).toBe(null)
-    expect(this.statil.transclude).toEqual(jasmine.any(Function))
   })
 
 })
@@ -55,7 +53,7 @@ describe('template utility methods', function() {
   describe('#imports', function() {
 
     it('creates default imports attributes', function() {
-      var imports = this.statil.imports()
+      var imports = Statil.methods.imports.call(this.statil)
       expect(imports).toEqual(jasmine.any(Object))
       expect(imports.$include).toEqual(jasmine.any(Function))
       expect(imports.$entitle).toEqual(jasmine.any(Function))
@@ -68,12 +66,12 @@ describe('template utility methods', function() {
   describe('#templateOptions', function() {
 
     it('creates default template options for _.template', function() {
-      var opt = this.statil.templateOptions()
+      var opt = Statil.methods.templateOptions.call(this.statil)
       expect(opt).toEqual(jasmine.any(Object))
     })
 
     it('includes whatever was passed in constructor options', function() {
-      var opt = this.statil.templateOptions()
+      var opt = Statil.methods.templateOptions.call(this.statil)
       expect(opt.imports).toEqual(jasmine.any(Object))
       expect(opt.imports.customDefault.name).toBe('customDefault')
       expect(opt.unrelated).toEqual(jasmine.any(Object))
@@ -86,12 +84,12 @@ describe('template utility methods', function() {
 
     beforeEach(function() {
       this.locals = Object.create(null)
-      this.statil.locals(this.locals)
+      Statil.methods.locals.call(this.statil, this.locals)
     })
 
     it('is only defined to produce side effects with no return value', function() {
       var locals = Object.create(null)
-      var output = this.statil.locals(locals)
+      var output = Statil.methods.locals.call(this.statil, locals)
 
       expect(output).toBeUndefined()
       expect(_.keys(locals).length).toBeGreaterThan(0)
@@ -110,7 +108,7 @@ describe('template utility methods', function() {
       callWithDifferentInputs(function(arg) {
         if (_.isObject(arg)) return
         var error
-        try {this.statil.locals(arg)} catch (err) {error = err}
+        try {Statil.methods.locals.call(this.statil, arg)} catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       }.bind(this))
     })
@@ -152,23 +150,22 @@ describe('template registration methods', function() {
 
     it('strips the file extension and rebases the path', function() {
       this.statil.register('', 'base/my-template.html')
-      expect(this.statil.paths).toEqual(['base/my-template'])
+      expect(_.keys(this.statil.templates)).toEqual(['base/my-template'])
       this.statil = new Statil()
       this.statil.register('', 'base/my-template.html', 'base')
-      expect(this.statil.paths).toEqual(['my-template'])
+      expect(_.keys(this.statil.templates)).toEqual(['my-template'])
     })
 
     it('registers the path, the source, and compiles a template', function() {
       this.statil.register('template source', 'my-template.html')
       // Path.
-      expect(this.statil.paths).toEqual(['my-template'])
+      expect(_.keys(this.statil.templates)).toEqual(['my-template'])
 
       // Source.
-      expect(_.keys(this.statil.sources)).toEqual(this.statil.paths)
+      expect(_.keys(this.statil.sources)).toEqual(_.keys(this.statil.templates))
       expect(typeof this.statil.sources['my-template']).toBe('string')
 
       // Template.
-      expect(_.keys(this.statil.templates)).toEqual(this.statil.paths)
       expect(this.statil.templates['my-template']).toEqual(jasmine.any(Function))
     })
 
@@ -204,11 +201,6 @@ describe('template registration methods', function() {
       expect(this.statil.register).toHaveBeenCalled()
     })
 
-    it('registers scanned paths', function() {
-      expect(this.statil.paths.length).toBeGreaterThan(0)
-      expect(typeof this.statil.paths[0]).toBe('string')
-    })
-
     it('registers sources', function() {
       expect(_.keys(this.statil.sources).length).toBeGreaterThan(0)
       var key = _.first(_.keys(this.statil.sources))
@@ -229,7 +221,6 @@ describe('template registration methods', function() {
         'guitar-solo/description',
         'partials/navbar'
       ])
-      expect(_.sortBy(this.statil.paths)).toEqual(paths)
       expect(_.sortBy(_.keys(this.statil.sources))).toEqual(paths)
       expect(_.sortBy(_.keys(this.statil.templates))).toEqual(paths)
     })
@@ -248,30 +239,30 @@ describe('template registration methods', function() {
     })
 
     it('successfully finds an existing template function', function() {
-      expect(this.statil.resolve('partials/navbar')).toEqual(jasmine.any(Function))
+      expect(Statil.methods.resolve.call(this.statil, 'partials/navbar')).toEqual(jasmine.any(Function))
     })
 
     it('returns a transclude substitute if a non-existent index is requested', function() {
-      expect(this.statil.resolve('partials/index')).toBe(this.statil.transclude)
+      expect(Statil.methods.resolve.call(this.statil, 'partials/index')).toEqual(jasmine.any(Function))
     })
 
     it('throws an error if a non-existent non-index is requested', function() {
       var error
-      try {this.statil.resolve('partials/footer')} catch (err) {error = err}
+      try {Statil.methods.resolve.call(this.statil, 'partials/footer')} catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
     })
 
     it('is only defined to accept a non-empty string', function() {
       var error
-      try {this.statil.resolve(true)} catch (err) {error = err}
+      try {Statil.methods.resolve.call(this.statil, true)} catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
 
       error = null
-      try {this.statil.resolve('')} catch (err) {error = err}
+      try {Statil.methods.resolve.call(this.statil, '')} catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
 
       error = null
-      try {this.statil.resolve()} catch (err) {error = err}
+      try {Statil.methods.resolve.call(this.statil)} catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
     })
 
@@ -323,19 +314,19 @@ describe('rendering', function() {
 
     it('calls #resolve to get a missing index template', function() {
       var statil = new Statil()
-      spyOn(statil, 'resolve').andCallThrough()
+      spyOn(Statil.methods, 'resolve').andCallThrough()
 
       statil.register('page content', 'nested/page')
 
       expect(statil.renderOne('nested/page')).toBe('page content')
-      expect(statil.resolve).toHaveBeenCalled()
+      expect(Statil.methods.resolve).toHaveBeenCalled()
     })
 
     it('calls #locals to enhance the data', function() {
-      spyOn(this.statil, 'locals').andCallThrough()
+      spyOn(Statil.methods, 'locals').andCallThrough()
       var data = Object.create(null)
       this.statil.renderOne('partials/navbar', data)
-      expect(this.statil.locals).toHaveBeenCalledWith(data)
+      expect(Statil.methods.locals).toHaveBeenCalledWith(data)
     })
 
     it('assigns the given path to the data as $path', function() {
@@ -502,7 +493,7 @@ describe('template methods', function() {
   beforeEach(function() {
     this.statil = new Statil()
     this.statil.scanDirectory(templateDir())
-    this.imports = this.statil.imports()
+    this.imports = Statil.methods.imports.call(this.statil)
   })
 
   describe('$include', function() {

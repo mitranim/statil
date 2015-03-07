@@ -4,8 +4,8 @@
   "description": "Most lightweight static site generator ever.",
   "main": "index.js",
   "scripts": {
-    "test": "jasmine-node tests",
-    "autotest": "jasmine-node --autotest tests --watch ./",
+    "test": "env STATIL_ENV=testing jasmine-node tests",
+    "autotest": "env STATIL_ENV=testing jasmine-node --autotest tests --watch ./",
     "prepublish": "npm test"
   },
   "author": "Mitranim",
