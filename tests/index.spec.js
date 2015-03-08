@@ -89,6 +89,9 @@ describe('template utility methods', function() {
       }
       this.statil.register(JSON.stringify(this.meta), 'templates/meta.yaml')
       this.locals = Object.create(null)
+
+      spyOn(Statil.prototype, 'meta').andCallThrough()
+
       Statil.methods.locals.call(this.statil, 'templates/dance', this.locals)
     })
 
@@ -127,8 +130,9 @@ describe('template utility methods', function() {
       expect(_.has(this.locals, '$path')).toBe(false)
     })
 
-    it("assigns the current directory's $meta, if available", function() {
+    it("calls #meta to find the current directory's metadata and assigns it, if available", function() {
       expect(this.locals.$meta).toEqual(this.meta)
+      expect(Statil.prototype.meta).toHaveBeenCalledWith('templates/dance')
     })
 
     it("assigns the current file's metadata, if available", function() {
@@ -146,7 +150,7 @@ describe('template utility methods', function() {
  * Methods that deal with template registration, path resolution, and
  * directory scanning.
  */
-describe('template registration methods', function() {
+describe('registration and pathing methods', function() {
 
   beforeEach(function() {
     this.statil = new Statil()
@@ -219,6 +223,11 @@ describe('template registration methods', function() {
       this.statil.scanDirectory(templateDir())
     })
 
+    // Cleanup.
+    afterEach(function() {
+      this.statil.register.reset()
+    })
+
     it('is only defined to accept a string argument', function() {
       var error
       try {this.statil.scanDirectory(123)} catch (err) {error = err}
@@ -248,11 +257,6 @@ describe('template registration methods', function() {
       paths = _.sortBy(paths.map(strip))
 
       expect(_.sortBy(_.keys(this.statil.templates))).toEqual(paths)
-    })
-
-    // Cleanup.
-    afterEach(function() {
-      this.statil.register.reset()
     })
 
   })
@@ -289,6 +293,26 @@ describe('template registration methods', function() {
       error = null
       try {Statil.methods.resolve.call(this.statil)} catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
+    })
+
+  })
+
+  describe('#meta', function() {
+
+    it('is only defined to accept a string path', function() {
+      callWithDifferentInputs(function(input) {
+        if (typeof input === 'string') return
+        var error
+        try {this.statil.meta(input)} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      }.bind(this))
+    })
+
+    it("returns the metadata value associated with the dirname of the given path", function() {
+      this.statil.register('special: fried cricket', 'abstract/meta.yaml')
+      this.statil.register('', 'abstract/page.html')
+      expect(this.statil.meta('abstract/page')).toEqual({special: 'fried cricket'})
+      expect(this.statil.meta('nowhere')).toBeUndefined()
     })
 
   })
@@ -515,6 +539,17 @@ describe('rendering', function() {
       var statil = new Statil()
       statil.scanDirectory(templateDir())
       statil.renderAll()
+    })
+
+    it("ignores files whose names match the 'ignore' expression in their meta directory", function() {
+      // First pass.
+      var results = this.statil.renderAll(this.data)
+      expect(results['nested/page']).toBeTruthy()
+
+      // Second pass.
+      this.statil.meta('nested/index').ignore = '.*'
+      var results = this.statil.renderAll(this.data)
+      expect(results['nested/page']).toBeUndefined()
     })
 
   })
