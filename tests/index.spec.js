@@ -315,6 +315,12 @@ describe('registration and pathing methods', function() {
       expect(this.statil.meta('nowhere')).toBeUndefined()
     })
 
+    it('allows to indicate a directory path with a trailing slash', function() {
+      this.statil.register('special: fried cricket', 'abstract/meta.yaml')
+      expect(this.statil.meta('abstract/')).toEqual({special: 'fried cricket'})
+      expect(this.statil.meta('abstract')).toBeUndefined()
+    })
+
   })
 
 })
@@ -541,15 +547,67 @@ describe('rendering', function() {
       statil.renderAll()
     })
 
-    it("ignores files whose names match the 'ignore' expression in their meta directory", function() {
-      // First pass.
-      var results = this.statil.renderAll(this.data)
-      expect(results['nested/page']).toBeTruthy()
+    describe("uses the 'ignore' option", function() {
 
-      // Second pass.
-      this.statil.meta('nested/index').ignore = '.*'
-      var results = this.statil.renderAll(this.data)
-      expect(results['nested/page']).toBeUndefined()
+      it("ignores files whose names match the 'ignore' expression in their meta directory", function() {
+        // First pass.
+        var results = this.statil.renderAll(this.data)
+        expect(results['nested/page']).toBeTruthy()
+
+        // Second pass.
+        this.statil.meta('nested/index').ignore = '.*'
+        var results = this.statil.renderAll(this.data)
+        expect(results['nested/page']).toBeUndefined()
+      })
+
+    })
+
+    describe("uses the 'files[<filename>].repeat' option", function() {
+
+      beforeEach(function() {
+        this.statil = new Statil()
+        this.statil.scanDirectory(templateDir())
+        this.meta = this.statil.meta('repeater/')
+      })
+
+      it('requires the repeater key to be a string', function() {
+        // Preparation.
+        expect(this.meta.files.index).toBeTruthy()
+        expect(typeof this.meta.files.index.repeat).toBe('string')
+        expect(this.meta.planets).toEqual(jasmine.any(Array))
+        // First pass (should succeed).
+        this.statil.renderAll()
+        // Second pass (should fail).
+        this.meta.files.index.repeat = true
+        var error
+        try {this.statil.renderAll()} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      })
+
+      it('requires the repeater key to point to an array', function() {
+        this.meta.planets = {name: 'earth'}
+        var error
+        try {this.statil.renderAll()} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      })
+
+      it("requires each repeater element to have a non-empty string under 'name'", function() {
+        this.meta.planets = [{title: 'earth'}]
+        var error
+        try {this.statil.renderAll()} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      })
+
+      it('renders the template once for each element, merging the element into locals', function() {
+        this.statil.templates = _.pick(this.statil.templates, 'repeater/index')
+        this.statil.metas = _.pick(this.statil.metas, 'repeater')
+        var result = this.statil.renderAll()
+        expect(result).toEqual({
+          'repeater/earth': 'Planet name: Earth\nPlanet position: 0',
+          'repeater/mars':  'Planet name: Mars\nPlanet position: 0'
+        })
+      })
+
     })
 
   })
