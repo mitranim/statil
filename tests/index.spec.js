@@ -2,8 +2,11 @@
 
 /******************************* Dependencies ********************************/
 
-var _ = require('lodash')
-var Statil = require('../index')
+var _      = require('lodash')
+var glob   = require('glob')
+var pt     = require('path')
+var Statil = require('../lib/index')
+var yaml   = require('js-yaml')
 
 /*********************************** Specs ***********************************/
 
@@ -25,18 +28,27 @@ describe('statil constructor', function() {
     expect(statil).toEqual(jasmine.any(Statil))
   })
 
-  it('saves the options passed to it', function() {
-    expect(this.statil.options).toEqual(flatOptions())
-  })
-
   it('survives any options argument', function() {
     expect(_.wrap(Statil, callWithDifferentInputs)).not.toThrow()
   })
 
+  it('assigns provided options to self', function() {
+    // Expecting primitive imports in flat options to overwrite statil.imports.
+    expect(_.pick(this.statil, _.keys(flatOptions()))).toEqual(flatOptions())
+  })
+
+  it('creates default imports and merges them with imports from options', function() {
+    var statil = new Statil(options())
+
+    var resultingKeys = _.keys(statil.imports)
+    var expectedKeys = _.keys(options().imports).concat(_.keys(Statil.methods.imports.call(statil)))
+
+    expect(_.sortBy(expectedKeys)).toEqual(_.sortBy(resultingKeys))
+  })
+
   it('creates mandatory default fields', function() {
-    expect(this.statil.options).toEqual(jasmine.any(Object))
-    expect(this.statil.sources).toEqual(jasmine.any(Object))
     expect(this.statil.templates).toEqual(jasmine.any(Object))
+    expect(this.statil.metas).toEqual(jasmine.any(Object))
   })
 
 })
@@ -63,33 +75,44 @@ describe('template utility methods', function() {
 
   })
 
-  describe('#templateOptions', function() {
-
-    it('creates default template options for _.template', function() {
-      var opt = Statil.methods.templateOptions.call(this.statil)
-      expect(opt).toEqual(jasmine.any(Object))
-    })
-
-    it('includes whatever was passed in constructor options', function() {
-      var opt = Statil.methods.templateOptions.call(this.statil)
-      expect(opt.imports).toEqual(jasmine.any(Object))
-      expect(opt.imports.customDefault.name).toBe('customDefault')
-      expect(opt.unrelated).toEqual(jasmine.any(Object))
-      expect(opt.unrelated.customUnrelated.name).toBe('customUnrelated')
-    })
-
-  })
-
   describe('#locals', function() {
 
     beforeEach(function() {
+      // Register mock template.
+      this.statil.register('wild flower dance with <%= secret %>', 'templates/dance.html')
+      // Register mock meta.
+      this.meta = {
+        abstract: true,
+        files: {
+          dance: {hash: {one: _.uniqueId(), two: _.uniqueId()}}
+        }
+      }
+      this.statil.register(JSON.stringify(this.meta), 'templates/meta.yaml')
       this.locals = Object.create(null)
-      Statil.methods.locals.call(this.statil, this.locals)
+      Statil.methods.locals.call(this.statil, 'templates/dance', this.locals)
+    })
+
+    it('is only defined to accept a string path and a data hash', function() {
+      var self = this
+      // First argument.
+      callWithDifferentInputs(function(input) {
+        if (typeof input === 'string') return
+        var error
+        try {Statil.methods.locals.call(self.statil, input, {})} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      })
+      // Second argument.
+      callWithDifferentInputs(function(input) {
+        if (_.isObject(input)) return
+        var error
+        try {Statil.methods.locals.call(self.statil, '', input)} catch (err) {error = err}
+        expect(error).toEqual(jasmine.any(Error))
+      })
     })
 
     it('is only defined to produce side effects with no return value', function() {
       var locals = Object.create(null)
-      var output = Statil.methods.locals.call(this.statil, locals)
+      var output = Statil.methods.locals.call(this.statil, '', locals)
 
       expect(output).toBeUndefined()
       expect(_.keys(locals).length).toBeGreaterThan(0)
@@ -104,13 +127,15 @@ describe('template utility methods', function() {
       expect(_.has(this.locals, '$path')).toBe(false)
     })
 
-    it('is only defined to accept an object argument', function() {
-      callWithDifferentInputs(function(arg) {
-        if (_.isObject(arg)) return
-        var error
-        try {Statil.methods.locals.call(this.statil, arg)} catch (err) {error = err}
-        expect(error).toEqual(jasmine.any(Error))
-      }.bind(this))
+    it("assigns the current directory's $meta, if available", function() {
+      expect(this.locals.$meta).toEqual(this.meta)
+    })
+
+    it("assigns the current file's metadata, if available", function() {
+      expect(_.every(this.meta.files.dance, function(value, key) {
+        if (_.isEqual(this.locals[key], value)) return true
+        return false
+      }, this)).toBe(true)
     })
 
   })
@@ -156,15 +181,10 @@ describe('template registration methods', function() {
       expect(_.keys(this.statil.templates)).toEqual(['my-template'])
     })
 
-    it('registers the path, the source, and compiles a template', function() {
+    it('registers the path and compiles a template', function() {
       this.statil.register('template source', 'my-template.html')
       // Path.
       expect(_.keys(this.statil.templates)).toEqual(['my-template'])
-
-      // Source.
-      expect(_.keys(this.statil.sources)).toEqual(_.keys(this.statil.templates))
-      expect(typeof this.statil.sources['my-template']).toBe('string')
-
       // Template.
       expect(this.statil.templates['my-template']).toEqual(jasmine.any(Function))
     })
@@ -179,6 +199,14 @@ describe('template registration methods', function() {
 
       expect(_.template).toHaveBeenCalled()
       expect(this.statil.templates['my-template']({secret: stamp})).toBe('secret output: ' + stamp)
+    })
+
+    it('passes clone of self to _.template', function() {
+      spyOn(_, 'template').andCallThrough()
+      this.statil.register('secret output: <%= secret %>', 'my-template')
+      var config = _.template.mostRecentCall.args[1]
+      expect(config).not.toBe(this.statil)
+      expect(config).toEqual(_.clone(this.statil))
     })
 
   })
@@ -201,27 +229,24 @@ describe('template registration methods', function() {
       expect(this.statil.register).toHaveBeenCalled()
     })
 
-    it('registers sources', function() {
-      expect(_.keys(this.statil.sources).length).toBeGreaterThan(0)
-      var key = _.first(_.keys(this.statil.sources))
-      expect(typeof this.statil.sources[key]).toBe('string')
-    })
-
     it('compiles templates', function() {
       expect(_.keys(this.statil.templates).length).toBeGreaterThan(0)
       var key = _.first(_.keys(this.statil.templates))
       expect(this.statil.templates[key]).toEqual(jasmine.any(Function))
     })
 
-    it('registers the template paths relatively to the template directory and without extensions', function() {
-      var paths = _.sortBy([
-        'index',
-        'about',
-        'guitar-solo/index',
-        'guitar-solo/description',
-        'partials/navbar'
-      ])
-      expect(_.sortBy(_.keys(this.statil.sources))).toEqual(paths)
+    it('registers metadata files under their directory paths', function() {
+      var paths = glob.sync(pt.join('./tests/templates', '**/*.@(yaml|json)'), {nodir: true, nonull: true})
+      paths = paths.map(stripFilename)
+      expect(_.sortBy(_.keys(this.statil.metas))).toEqual(paths)
+    })
+
+    it('registers template files under paths relative to the template directory and without extensions', function() {
+      var metaPaths = glob.sync(pt.join('./tests/templates', '**/*.@(yaml|json)'), {nodir: true, nonull: true})
+      var paths = glob.sync(pt.join('./tests/templates', '**/*'), {nodir: true, nonull: true})
+      paths = _.pull.apply(null, [paths].concat(metaPaths))
+      paths = _.sortBy(paths.map(strip))
+
       expect(_.sortBy(_.keys(this.statil.templates))).toEqual(paths)
     })
 
@@ -326,7 +351,7 @@ describe('rendering', function() {
       spyOn(Statil.methods, 'locals').andCallThrough()
       var data = Object.create(null)
       this.statil.renderOne('partials/navbar', data)
-      expect(Statil.methods.locals).toHaveBeenCalledWith(data)
+      expect(Statil.methods.locals).toHaveBeenCalledWith('partials/navbar', data)
     })
 
     it('assigns the given path to the data as $path', function() {
@@ -446,15 +471,18 @@ describe('rendering', function() {
 
     beforeEach(function() {
       this.statil = new Statil()
+      // Templates.
       this.statil.register('outer enclosure with a <%= secret %> plus <%= $content %>', 'index')
       this.statil.register('inner content with a <%= secret %>', 'nested/page')
+      // Metas.
+      this.statil.register('metaSecret: something wild', 'nested/meta.yaml')
 
       this.data = localData()
 
       spyOn(this.statil, 'render').andCallThrough()
     })
 
-    it('calls #render once for each registered template', function() {
+    it('calls #render once for each registered template, skipping meta files', function() {
       this.statil.renderAll(this.data)
       var paths = _.sortBy(_.map(this.statil.render.argsForCall, '0'))
       expect(paths).toEqual(_.sortBy(['index', 'nested/page']))
@@ -466,7 +494,9 @@ describe('rendering', function() {
       // The original object reference should never be exposed to #render.
       expect(this.statil.render).not.toHaveBeenCalledWith(this.data)
 
-      // Make sure the data was still made available to each call.
+      // Make sure the data was still made available to each call. Not doing a
+      // .toEqual comparison here because data objects are intentionally mutated
+      // in render call chains.
       var locals = _.map(this.statil.render.argsForCall, '1')
       var secrets = _.map(locals, 'secret')
       expect(secrets).toEqual(_.times(this.statil.render.callCount, _.constant(localData().secret)))
@@ -479,6 +509,12 @@ describe('rendering', function() {
         'index': 'outer enclosure with a ' + localData().secret + ' plus ',
         'nested/page': 'outer enclosure with a ' + localData().secret + ' plus inner content with a ' + localData().secret
       })
+    })
+
+    it('survives rendering the test template directory', function() {
+      var statil = new Statil()
+      statil.scanDirectory(templateDir())
+      statil.renderAll()
     })
 
   })
@@ -668,4 +704,24 @@ function callWithDifferentInputs(fn) {
   fn([])
   fn({})
   fn(Object.create(null))
+}
+
+/**
+ * Strips the template directory and the file extension from the given path.
+ * @param   String
+ * @returns String
+ */
+function strip(path) {
+  path = pt.relative(templateDir(), path)
+  path = pt.join(pt.parse(path).dir, pt.parse(path).name)
+  return path
+}
+
+/**
+ * Strips the template directory and the file name from the given path.
+ * @param   String
+ * @returns String
+ */
+function stripFilename(path) {
+  return pt.relative(templateDir(), pt.dirname(path))
 }
