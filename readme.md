@@ -30,7 +30,24 @@ collection of partial templates into a collection of complete, isolated html
 pages. Then it may be served as static files on a service like GitHub Pages.
 It's great for stateless sites like repository documentation or personal pages.
 
-## Example
+## Installation and Usage
+
+Should be used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil).
+See its readme for an example.
+
+To run tests, clone the repo, `cd` to its directory, run `npm i`, and use:
+
+```shell
+npm test
+```
+
+To watch files and rerun tests when tinkering with the source, use:
+
+```shell
+npm run autotest
+```
+
+## Explanation
 
 Suppose you have a project structure like this:
 
@@ -80,49 +97,17 @@ that are being rendered. In combination with the depth-first approach, this lets
 you propagate meta information upwards to the root template, which is exploited
 by the built-in `$entitle` method and the `$title` meta string.
 
-## Installation and Usage
+## Metadata
 
-In a shell:
+statil supports additional metadata in YAML files (YAML is a superset of JSON,
+so this includes JSON). They're identified by extension: `(yaml|json)`.
 
-```shell
-npm i --save-dev statil
-```
+Meta data is always associated with a directory, and each directory may have
+only one meta file.
 
-In a build script:
-
-```javascript
-var Statil = require('statil')
-
-// Creates a new statil instance with the given options. The options will be
-// enhanced with some defaults and passed to lodash's _.template function when
-// compiling templates (see below).
-var statil = new Statil(<options>)
-
-// Walks the given directory and compiles a template from each file.
-statil.scanDirectory(<dirname>)
-
-// Renders an individual template at the given path. The locals are enhanced
-// with some defaults and passed to the template when rendering.
-var rendered = statil.render(<path>, <locals>)
-
-// Produces a hash of paths and rendered strings.
-var rendered = statil.renderAll(<locals>)
-```
-
-See the [`gulp-statil`](https://github.com/Mitranim/gulp-statil) documentation
-for an example of integrating this with your build chain.
-
-To run tests, clone the repo, `cd` to its directory, run `npm i`, and use:
-
-```shell
-npm test
-```
-
-To watch files and rerun tests when tinkering with the source, use:
-
-```shell
-npm run autotest
-```
+A metadata file describes the current directory, and its `files:` key describes
+files in the directory. Each file's legend is assigned to the locals object
+passed to the template when rendering that file.
 
 ## ToDo / WIP
 

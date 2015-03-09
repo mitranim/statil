@@ -1,11 +1,11 @@
 {
   "name": "statil",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Most lightweight static site generator ever.",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "env STATIL_ENV=testing jasmine-node tests",
-    "autotest": "env STATIL_ENV=testing jasmine-node --autotest tests --watch ./",
+    "autotest": "env STATIL_ENV=testing jasmine-node --autotest tests --watch ./lib ./tests",
     "prepublish": "npm test"
   },
   "author": "Mitranim",
@@ -20,7 +20,7 @@
     "url": "https://github.com/Mitranim/statil.git"
   },
   "dependencies": {
-    "glob": "^4.4.0",
+    "js-yaml": "^3.2.7",
     "lodash": "^3.3.1"
   },
   "devDependencies": {
