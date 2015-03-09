@@ -3,7 +3,9 @@
 /******************************* Dependencies ********************************/
 
 var _    = require('lodash')
+var fs   = require('fs')
 var pt   = require('path')
+var glob = require('glob')
 var yaml = require('js-yaml')
 
 /******************************** Constructor ********************************/
@@ -12,48 +14,93 @@ var yaml = require('js-yaml')
  * Statil constructor. Takes a hash of options for lodash's template parser,
  * adds some defaults, and assigns them to self. Sets a few other utility
  * fields.
+ * @param Hash
  */
-function Statil(options /* : ?{} */) {
-  // Assign default imports to self.
+function Statil(options) {
+  // Self-correct when called without 'new'.
+  if (!(this instanceof Statil)) return new Statil(options)
+
+  // Make sure options is a writable object.
+  if (!_.isObject(options)) options = Object.create(null)
+
+  /**
+   * Assign default imports to self.
+   */
   this.imports = methods.imports.call(this)
 
-  // Merge provided options into self.
+  /**
+   * Merge provided options into self.
+   */
   _.merge(this, options)
 
-  // Map of parsed template paths to compiled templates.
-  this.templates /* : {} */ = Object.create(null)
+  /**
+   * Map of parsed template paths to compiled templates.
+   * @type Hash{Function}
+   */
+  this.templates = Object.create(null)
 
-  // Map of metadata directory paths to parsed metadata objects.
-  this.metas /* : {} */ = Object.create(null)
+  /**
+   * Map of metadata directory paths to parsed metadata objects.
+   * @type Hash{Hash}
+   */
+  this.metas = Object.create(null)
 }
 
 /****************************** Public Methods *******************************/
 
+/*-------------------------------- Rendering --------------------------------*/
+
 /**
- * Registers the given file under the given path, which is assumed to belong
- * to a file. If the path is absolute, we strip the current process's working
- * directory from it.
+ * Renders all templates, passing the given data. Skips templates matching the
+ * 'ignored' expression in their directory's metadata. Returns a map of paths
+ * to rendered strings.
+ * @param   Hash (optional)
+ * @returns Hash{String}
+ */
+Statil.prototype.renderAll = function(data) {
+  var buffer = Object.create(null)
+
+  _.each(this.templates, function(t, path) {
+    if (methods.isIgnored.call(this, path)) return
+    _.assign(buffer, methods.renderFile.call(this, path, data))
+  }, this)
+
+  return buffer
+}
+
+/*--------------------------------- Pathing ---------------------------------*/
+
+/**
+ * Registers the given file under the given path, which is assumed to be a
+ * file path. If srcDir is passed, this prefix is stripped from the path.
  *
  * If the file has a .yaml or .json extension, it's parsed as a YAML file
- * (superset of JSON) and registered as a meta under its directory path.
+ * (superset of JSON) and registered as a meta under its directory's path.
  * Otherwise it's compiled with lodash and registered as a template under its
- * own path, without the file extension.
+ * own path without the extension. We pass statil's clone to lodash's template
+ * parser as a config hash.
+ *
+ * @param String source
+ * @param String path
+ * @param String srcDir (optional)
  */
-Statil.prototype.register = function(source /* : string */, path /* : string */) /* : void */ {
+Statil.prototype.register = function(source, path, srcDir) {
   // Validate the arguments.
   validateString(source)
   validateTruthyString(path)
+  if (srcDir != null) validateTruthyString(srcDir)
 
-  // Strip the pwd.
-  path = pt.relative(process.cwd(), path)
+  // If srcDir is given, rebase the path.
+  if (srcDir) {
+    path = pt.relative(srcDir, path)
+  }
 
   /**
    * If this is a yaml or json file, register as a meta.
    */
-  var stats = pt.parse(path)
-  if (stats.ext === '.yaml' || stats.ext === '.json') {
+  if (pt.extname(path) === '.yaml' || pt.extname(path) === '.json') {
     // Strip the file name.
-    path = stats.dir
+    path = pt.dirname(path)
     // Mandate no more than one meta per path.
     if (this.metas[path]) {
       throw new Error('duplicate meta for path: ' + path)
@@ -66,39 +113,44 @@ Statil.prototype.register = function(source /* : string */, path /* : string */)
    */
   else {
     // Strip the file extension.
-    path = stripExt(path)
+    path = pt.join(pt.dirname(path), pt.parse(path).name)
     // Compile and register the template.
     this.templates[path] = _.template(source, clone(this))
   }
 }
 
 /**
- * Takes a hash of locals and renders all previously registered templates,
- * passing clones of said locals. Accounts for metadata options: templates
- * whose names match the 'ignore' expression in their meta are ignored, and
- * templates with an 'echo' option in their legend are echoed with the array
- * of legends referenced by it, producing multiple files.
- *
- * Returns a hash of resulting paths and rendered files.
+ * Scans the directory at the given path, relative to the cwd of the current
+ * process, and registers each file.
  */
-Statil.prototype.render = function(data /* : ?{} */) /* : {} */ {
-  var buffer = Object.create(null)
+Statil.prototype.scanDirectory = function(srcDir) {
+  // Validate the input.
+  validateTruthyString(srcDir)
 
-  for (var path in this.templates) {
-    if (methods.isIgnored.call(this, path)) continue
-    _.assign(buffer, methods.renderTemplate.call(this, path, data))
-  }
+  // Read the paths of the files in the given directory.
+  var paths = glob.sync(pt.join(srcDir, '**/*'), {nodir: true, nonull: true})
 
-  return buffer
+  // Read and register each file.
+  paths.forEach(function(path) {
+    this.register(fs.readFileSync(path, 'utf-8'), path, srcDir)
+  }, this)
 }
-
-/*--------------------------------- Pathing ---------------------------------*/
 
 /**
  * Takes a path to a file and returns the metadata associated with its
  * directory. Also accepts a path to a directory with a trailing slash.
+ *
+ * These are equivalent:
+ *   this.meta('partials/my-template')
+ *   this.meta('partials/')
+ *
+ * This is different:
+ *   this.meta('partials')
+ *
+ * @param   String
+ * @returns *|undefined
  */
-Statil.prototype.meta = function(path /* : string */) /* : ?any */ {
+Statil.prototype.meta = function(path) {
   // Validate the input.
   validateString(path)
 
@@ -115,8 +167,10 @@ Statil.prototype.meta = function(path /* : string */) /* : ?any */ {
  * Takes a path to a file and returns its legend from the metadata associated
  * with its directory, if available. The legend is identified by having the
  * same 'name' property as the file's name.
+ * @param   String
+ * @returns Legend|undefined
  */
-Statil.prototype.legend = function(path /* : string */) /* : ?Legend */ {
+Statil.prototype.legend = function(path) {
   // Validate the input.
   validateString(path)
   // Return the legend or undefined.
@@ -137,46 +191,28 @@ if (process.env.STATIL_ENV === 'testing') Statil.methods = methods
 /*-------------------------------- Rendering --------------------------------*/
 
 /**
- * Takes a path to a template and an optional hash of locals. Clones the
- * locals and enhances it with the template's legend (if available). If the
- * legend has an 'echo' option, the locals are echoed for each sublegend, each
- * locals clone receiving the sublegend's properties. For each clone, we form
- * a virtual path where the template's name is replaced with the 'name' from
- * the legend (in absence of legend or 'echo', the original path is used).
- * This virtual path is assigned as $path to the locals clone.
- *
- * Then we call Statil#renderThrough with the original template path for each
- * locals clone, mapping the result to the virtual path.
- *
- * The return value is a map of virtual paths to results.
+ * Renders the template at the given path, passing the given locals. The path
+ * must be a non-empty string. The locals are optional.
+ * @param   String path
+ * @param   Hash   data (optional)
+ * @returns String
  */
-methods.renderTemplate = function(path /* : string */, data /* : ?{} */) /* : {} */ {
-  var buffer = Object.create(null)
+methods.renderOneTemplate = function(path, data) {
+  // Validate the path and resolve it to a template function.
+  var template = methods.resolve.call(this, path)
 
-  // Enhance the locals with the legend.
-  var legend = this.legend(path)
-  data = _.assign(clone(data), legend)
+  // Make sure data is a writable object.
+  if (!_.isObject(data)) data = Object.create(null)
 
-  // Default datas group.
-  var datas = [data]
-  data.name = pt.basename(path)
+  // Provide default locals to the data.
+  methods.locals.call(this, path, data)
 
-  // Echo for each sublegend, if available.
-  if (legend && legend.echo) {
-    // Multiply and validate the legends.
-    var legends = echoLegend(this.meta(path), legend)
-    // Map the data.
-    datas = legends.map(function(legend) {return _.assign(clone(data), legend)})
-  }
+  // Assign the path once. The path should never be reassigned during a
+  // recursive render chain.
+  if (!data.$path) data.$path = path
 
-  // Render the template for each locals clone, assigning the result under the
-  // virtual path.
-  _.each(datas, function(data) {
-    var echoPath = data.$path = pt.join(pt.dirname(path), data.name)
-    buffer[echoPath] = methods.renderThrough.call(this, path, data)
-  }, this)
-
-  return buffer
+  // Render the result.
+  return template.call(this, data)
 }
 
 /**
@@ -186,42 +222,60 @@ methods.renderTemplate = function(path /* : string */, data /* : ?{} */) /* : {
  * as '$content' for transclusion in the next ancestor template.
  *
  * The path must be a non-empty string. The locals are optional.
+ *
+ * @param   String path
+ * @param   Hash   data (optional)
+ * @returns String
  */
-methods.renderThrough = function(path /* : string */, data /* : ?{} */) /* : string */ {
+methods.renderTemplate = function(path, data) {
   // Validate the path.
   validateTruthyString(path)
 
   // Make sure data is a writable object.
-  data = writable(data)
+  if (!_.isObject(data)) data = Object.create(null)
 
   // Get the paths at which to render.
   var compounded = split(path)
 
   // Render the result hierarchically.
   _.eachRight(compounded, function(compoundedPath) {
-    data.$content = methods.renderOne.call(this, compoundedPath, data)
+    data.$content = methods.renderOneTemplate.call(this, compoundedPath, data)
   }, this)
 
   return data.$content
 }
 
 /**
- * Renders the template at the given path, passing the given locals. The path
- * must be a non-empty string. The locals are optional.
+ * Same as #renderTemplate, but before rendering, checks the template's legend
+ * (if any) and echoes it (if the echo property is defined). Renders the
+ * template once for each echoed legend, passing a clone of the given locals
+ * enhanced with the legend details. Returns a hash of results, where keys are
+ * virtual paths.
+ * @param   String
+ * @returns Hash
  */
-methods.renderOne = function(path /* : string */, data /* : ?{} */) /* : string */ {
-  // Validate the path and resolve it to a template function.
-  validateTruthyString(path)
-  var template = this.templates[stripExt(path)] || transclude
+methods.renderFile = function(path, data) {
+  var buffer = Object.create(null)
 
-  // Make sure data is a writable object.
-  data = writable(data)
+  var legend = this.legend(path)
+  // If no legend is available, render normally.
+  if (!legend) {
+    buffer[path] = methods.renderTemplate.call(this, path, clone(data))
+    return buffer
+  }
 
-  // Provide default locals to the data.
-  methods.locals.call(this, path, data)
+  // Echo the legend and render each.
+  var legends = echoLegend(this.meta(path), legend)
+  _.each(legends, function(legend) {
+    // Form a new virtual path.
+    var echoPath = pt.join(pt.dirname(path), legend.name)
+    var locals = _.assign(clone(data), legend)
+    locals.$path = echoPath
+    // Render and assign the result under this virtual path.
+    buffer[echoPath] = methods.renderTemplate.call(this, path, locals)
+  }, this)
 
-  // Render the result.
-  return template.call(this, data)
+  return buffer
 }
 
 /*---------------------------------- Setup ----------------------------------*/
@@ -250,9 +304,9 @@ methods.imports = function() {
    * @param Hash   data
    */
   imports.$include = function $include(path, data) {
-    // Clone the data object and pass arguments to #renderOne.
+    // Clone the data object and pass arguments to #renderOneTemplate.
     data = clone(data)
-    return methods.renderOne.call(self, path, data)
+    return methods.renderOneTemplate.call(self, path, data)
   }
 
   /**
@@ -310,11 +364,13 @@ methods.imports = function() {
 /**
  * Takes a path to a template file and a data object. Writes contextual locals
  * into that object.
+ * @param String
+ * @param Hash
  */
-methods.locals = function(path /* : string */, data /* : {} */) /* : void */ {
+methods.locals = function(path, data) {
   // Validate the input.
   validateString(path)
-  validateWritable(data)
+  validateHash(data)
 
   // Make sure '$content' is always defined and is a string.
   if (typeof data.$content !== 'string') data.$content = ''
@@ -332,17 +388,48 @@ methods.locals = function(path /* : string */, data /* : {} */) /* : void */ {
   /**
    * Include the file's legend from the directory's metadata, if available.
    * Note: these locals are intentionally allowed to "bleed through" to
-   * ancestor templates during a Statil#renderThrough pass.
+   * ancestor templates during a Statil#renderTemplate pass.
    */
   var legend = this.legend(path)
   if (legend) _.assign(data, legend)
 }
 
 /**
+ * Resolves the given compounded path against own template cache. The last
+ * name in the path is assumed to be a template name. If it's not 'index',
+ * then a template must be found by that name, otherwise an error is thrown.
+ * If the last name is 'index', then we're going to be lenient: if a template
+ * at this path is not found, we're using a minimal pass-through substitute
+ * that simply transcludes the content.
+ *
+ * Returns the found or substituted template.
+ *
+ * @param   String
+ * @returns Function
+ */
+methods.resolve = function(path) {
+  // Validate the input.
+  validateTruthyString(path)
+
+  // Get the base name.
+  var name = pt.basename(path)
+
+  // If it's not index, mandate some kind of template.
+  if (name !== 'index' && !this.templates[path]) {
+    throw new Error('template not found at path: ' + path)
+  }
+
+  // Otherwise try to return a template or use a substitute.
+  return this.templates[path] || transclude
+}
+
+/**
  * Checks if the name of the template at the given path matches the 'ignore'
  * expression in that directory's metadata, if any.
+ * @param   String
+ * @returns Boolean
  */
-methods.isIgnored = function(path /* : string */) /* : boolean */ {
+methods.isIgnored = function(path) {
   var meta = this.meta(path)
   if (!meta || !meta.ignore) return false
   validateTruthyString(meta.ignore)
@@ -353,16 +440,19 @@ methods.isIgnored = function(path /* : string */) /* : boolean */ {
 
 /**
  * Clones the given value into a pure hash table.
+ * @returns Hash
  */
-function clone(hash /* : ?{} */) /* : {} */ {
+function clone(hash) {
   return _.assign(Object.create(null), _.clone(hash))
 }
 
 /**
  * Splits the given path into an array of hierarchical paths. Appends 'index'
  * to each directory path.
+ * @param String path
+ * @returns Array[String]
  */
-function split(path /* : string */) /* : string[] */ {
+function split(path) {
   validateTruthyString(path)
 
   var parts = path.split(pt.sep)
@@ -395,8 +485,9 @@ function split(path /* : string */) /* : string[] */ {
 
 /**
  * Base transcluder template used as a substitute for a missing 'index' file.
+ * @type Function
  */
-var transclude /* : Function */ = _.template('<%= $content %>')
+var transclude = _.template('<%= $content %>')
 
 /**
  * Resolves a legend relatively to a meta by echoing it zero or more times,
@@ -407,55 +498,45 @@ var transclude /* : Function */ = _.template('<%= $content %>')
  */
 function echoLegend(meta, legend) {
   // Validate the input.
-  validateWritable(meta)
+  validateHash(meta)
   validateLegend(legend)
 
   // Resolve the echo relative to the meta.
-  var echo /* : ?string|?Legend[] */ = legend.echo
+  var echo = legend.echo
   // In absence of an echo property, echo the legend as itself.
   if (!echo) return [legend]
   // If the echo is a string, assume it to be a key for a meta property.
   if (typeof echo === 'string') echo = meta[echo]
-  // Mandate the result to be an array.
+  // Otherwise mandate it to be an array.
   if (!_.isArray(echo)) {
     throw new TypeError('expected echo to resolve to an array, got: ' + echo)
   }
 
-  // Resolve each sublegend and concat the result.
-  return _.flatten(echo.map(_.curry(echoLegend)(meta)))
-}
-
-/**
- * Makes sure the value is a writable hash.
- */
-function writable(value /* : any */) /* : {} */ {
-  return _.isObject(value) ? value : Object.create(null)
-}
-
-/**
- * Strips extension from given path, leaving dirname and basename.
- */
-function stripExt(path /* : string */) /* : string */ {
-  validateTruthyString(path)
-  return pt.join(pt.dirname(path), pt.parse(path).name)
+  // Map the resolved array to an array of extended legends, assigning their
+  // properties to a clone of the original legend.
+  return _.reduce(echo, function(buffer, subLegend) {
+    return buffer.concat(echoLegend(meta, _.assign(clone(legend), subLegend)))
+  }, [])
 }
 
 /*------------------------------- Validators --------------------------------*/
 
 /**
- * Validates a writable object.
+ * Validates a hash table.
+ * @param ?Hash
  */
-function validateWritable(value /* : ?{} */) /* : void */ {
-  if (!_.isObject(value)) {
-    throw new TypeError('expected a writable object, got: ' + value)
+function validateHash(value) {
+  if (!_.isObject(value) || _.isArray(value)) {
+    throw new TypeError('expected a hash table, got: ' + value)
   }
 }
 
 /**
  * Validates a file legend.
+ * @param ?Legend
  */
-function validateLegend(legend /* : ?Legend */) /* : void */ {
-  validateWritable(legend)
+function validateLegend(legend) {
+  validateHash(legend)
   if (typeof legend.name !== 'string' || !legend.name) {
     throw new TypeError('expected a legend to contain a non-empty name, got: ' + legend.name)
   }
@@ -463,8 +544,9 @@ function validateLegend(legend /* : ?Legend */) /* : void */ {
 
 /**
  * Validates a string.
+ * @param ?String
  */
-function validateString(value /* : ?string */) /* : void */ {
+function validateString(value) {
   if (typeof value !== 'string') {
     throw new TypeError('expected a string, got: ' + value)
   }
@@ -472,8 +554,9 @@ function validateString(value /* : ?string */) /* : void */ {
 
 /**
  * Validates a non-empty string.
+ * @param ?String
  */
-function validateTruthyString(value /* : ?string */) /* : void */ {
+function validateTruthyString(value) {
   validateString(value)
   if (!value) {
     throw new TypeError('expected a non-empty string, got: ' + value)

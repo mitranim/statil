@@ -1,6 +1,6 @@
 {
   "name": "statil",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Most lightweight static site generator ever.",
   "main": "lib/index.js",
   "scripts": {
