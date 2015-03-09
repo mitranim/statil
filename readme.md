@@ -32,35 +32,8 @@ It's great for stateless sites like repository documentation or personal pages.
 
 ## Installation and Usage
 
-In a shell:
-
-```shell
-npm i --save-dev statil
-```
-
-In a build script:
-
-```javascript
-var Statil = require('statil')
-
-// Creates a new statil instance with the given options. The options will be
-// enhanced with some defaults and passed to lodash's _.template function when
-// compiling templates (see below).
-var statil = new Statil(<options>)
-
-// Walks the given directory and compiles a template from each file.
-statil.scanDirectory(<dirname>)
-
-// Renders an individual template at the given path. The locals are enhanced
-// with some defaults and passed to the template when rendering.
-var rendered = statil.render(<path>, <locals>)
-
-// Produces a hash of paths and rendered strings.
-var rendered = statil.renderAll(<locals>)
-```
-
-See the [`gulp-statil`](https://github.com/Mitranim/gulp-statil) documentation
-for an example of integrating this with your build chain.
+Should be used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil).
+See its readme for an example.
 
 To run tests, clone the repo, `cd` to its directory, run `npm i`, and use:
 
@@ -74,7 +47,7 @@ To watch files and rerun tests when tinkering with the source, use:
 npm run autotest
 ```
 
-## Example
+## Explanation
 
 Suppose you have a project structure like this:
 
@@ -133,7 +106,7 @@ Meta data is always associated with a directory, and each directory may have
 only one meta file.
 
 A metadata file describes the current directory, and its `files:` key describes
-files in the directory. Each file's metadata is assigned to the locals object
+files in the directory. Each file's legend is assigned to the locals object
 passed to the template when rendering that file.
 
 ## ToDo / WIP
