@@ -20,7 +20,6 @@
     "url": "https://github.com/Mitranim/statil.git"
   },
   "dependencies": {
-    "glob": "^4.4.0",
     "js-yaml": "^3.2.7",
     "lodash": "^3.3.1"
   },

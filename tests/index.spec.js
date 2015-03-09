@@ -500,7 +500,7 @@ describe('private utility methods', function() {
       expect(Statil.prototype.meta).toHaveBeenCalledWith(mockLegend().path)
     })
 
-    it("assigns the current file's legend, if available", function() {
+    it("assigns the current file's legend, if available; uses _.defaults", function() {
       var data = this.data
       expect(_.every(_.keys(mockLegend()), function(key) {
         return _.has(data, key)
@@ -628,7 +628,9 @@ describe('template methods', function() {
 
       expect(active('index', {$path: 'index'})).toBe('active')
       expect(active('index', {$path: 'index/nested'})).toBe('active')
-      expect(active('inde', {$path: 'index/nested'})).toBe('')
+      expect(active('inde',  {$path: 'index/nested'})).toBe('')
+      expect(active('index', {$path: 'index/nested/elsewhere'})).toBe('active')
+      expect(active('index', {$path: 'nested/elsewhere/far-away'})).toBe('')
     })
 
   })
