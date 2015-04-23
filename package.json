@@ -1,8 +1,8 @@
 {
   "name": "statil",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Most lightweight static site generator ever.",
-  "main": "lib/index.js",
+  "main": "lib/index",
   "scripts": {
     "test": "env STATIL_ENV=testing jasmine-node tests",
     "autotest": "env STATIL_ENV=testing jasmine-node --autotest tests --watch ./lib ./tests",
