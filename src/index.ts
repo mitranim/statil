@@ -22,12 +22,15 @@ export default class Statil {
   // Map of directory paths to metadata objects.
   meta: {}
 
+  // Optional method used to rewrite paths of rendered files.
+  rename: (path: string) => string|void
+
   /**
    * Statil constructor. Takes a hash of options for lodash's template parser,
    * adds some defaults, and assigns them to self. Sets a few other utility
    * fields.
    */
-  constructor(options: {}) {
+  constructor(options: StatilOptions) {
     // Assign default imports to self.
     this.imports = methods.imports.call(this)
 

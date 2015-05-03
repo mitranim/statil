@@ -35,6 +35,10 @@ export default methods
  * Then we call Statil#renderThrough with the original template path for each
  * locals clone, mapping the result to the virtual path.
  *
+ * If the statil has a 'rename' method (e.g. passed through the options object
+ * into the statil constructor), this method is called for each resulting path.
+ * If it returns a value, this value replaces the path.
+ *
  * The return value is a map of virtual paths to results.
  */
 methods.renderTemplate = function(path: string, data?: Data): Hash {
@@ -64,7 +68,15 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   // virtual path.
   _.each(datas, data => {
     var echoPath = data.$path = pt.join(pt.dirname(path), data.name)
-    buffer[echoPath] = methods.renderThrough.call(this, path, data)
+    var result: string = methods.renderThrough.call(this, path, data)
+
+    // Rename the path, if a 'rename' method is available.
+    if (typeof this.rename === 'function') {
+      echoPath = this.rename(echoPath) || echoPath
+    }
+
+    // Write the result.
+    buffer[echoPath] = result
   })
 
   return buffer

@@ -1,3 +1,10 @@
+// Options passed into the statil constructor.
+interface StatilOptions extends _.TemplateSettings {
+  // If present, this is applied to each output path when rendering templates.
+  // If a value is returned, it replaces the "original" rendered path.
+  rename?(path: string): string|void
+}
+
 // File description in yaml metadata.
 declare type Legend = {
   name?: string

@@ -273,6 +273,32 @@ describe('private rendering methods', function() {
       expect(result[pathSecond]).toBeTruthy()
     })
 
+    it('if a `rename` method is available, uses it to rewrite paths', function() {
+      // First pass.
+      var firstResult = methods.renderTemplate.call(this.statil, mockLegend().path)
+      var firstPaths = _.sortBy(_.keys(firstResult))
+
+      // Add the rename method.
+      this.statil.rename = function(path) {
+        return path + '/affix'
+      }
+
+      // Second pass.
+      var secondResult = methods.renderTemplate.call(this.statil, mockLegend().path)
+      var secondPaths = _.sortBy(_.keys(secondResult))
+
+      _.each(secondPaths, function(path, index) {
+        expect(path).toEqual(firstPaths[index] + '/affix')
+      })
+
+      // If void is returned, the path must be unchanged.
+      this.statil.rename = _.noop
+
+      // Third pass.
+      var thirdResult = methods.renderTemplate.call(this.statil, mockLegend().path)
+      expect(thirdResult).toEqual(firstResult)
+    })
+
   })
 
   describe('#renderThrough', function() {
