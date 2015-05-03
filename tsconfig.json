@@ -1,20 +1,30 @@
 {
-    "version": "1.5.0-alpha",
+    "version": "1.5.0",
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
         "declaration": false,
         "noImplicitAny": false,
         "removeComments": false,
-        "noLib": false,
-        "outDir": "./lib"
+        "noLib": false
     },
+    "compileOnSave": false,
     "filesGlob": [
         "./**/*.ts",
+        "./typings/**/*.d.ts",
+        "./definitions/**/*.d.ts",
         "!./node_modules/**/*.ts"
     ],
     "files": [
+        "./definitions/lib.d.ts",
+        "./gulpfile.ts",
         "./src/index.ts",
-        "./src/lib.d.ts"
+        "./src/methods.ts",
+        "./src/statics.ts",
+        "./typings/gulp/gulp.d.ts",
+        "./typings/js-yaml/js-yaml.d.ts",
+        "./typings/lodash/lodash.d.ts",
+        "./typings/node/node.d.ts",
+        "./typings/tsd.d.ts"
     ]
 }

@@ -7,6 +7,9 @@ var pt     = require('path')
 var Statil = require('../lib/index')
 var yaml   = require('js-yaml')
 
+var methods = require('../lib/methods')
+var statics = require('../lib/statics')
+
 /*********************************** Specs ***********************************/
 
 /**
@@ -16,6 +19,8 @@ describe('Statil constructor', function() {
 
   beforeEach(function() {
     this.statil = new Statil(options())
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   it('is exported', function() {
@@ -31,7 +36,7 @@ describe('Statil constructor', function() {
     var statil = new Statil(options())
 
     var resultingKeys = _.keys(statil.imports)
-    var expectedKeys = _.keys(options().imports).concat(_.keys(Statil.methods.imports.call(statil)))
+    var expectedKeys = _.keys(options().imports).concat(_.keys(methods.imports.call(statil)))
 
     expect(_.sortBy(expectedKeys)).toEqual(_.sortBy(resultingKeys))
   })
@@ -51,6 +56,8 @@ describe('#register', function() {
 
   beforeEach(function() {
     this.statil = new Statil()
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   it('is only defined to accept two string arguments', function() {
@@ -107,10 +114,10 @@ describe('#register', function() {
     })
 
     it('using _.template, passing source as-is with clone of self as options', function() {
-      spyOn(_, 'template').andCallThrough()
+      spyOn(_, 'template').and.callThrough()
       var statil = new Statil()
       statil.register(srcFile().body, srcFile().path)
-      expect(_.template).toHaveBeenCalledWith(srcFile().body, _.clone(statil))
+      expect(_.template.calls.mostRecent().args).toEqual([srcFile().body, _.clone(statil)])
       expect(_.first(_.values(statil.templates))).toEqual(jasmine.any(Function))
     })
 
@@ -123,7 +130,7 @@ describe('#render', function() {
   beforeEach(function() {
     this.statil = new Statil()
       // Mock #renderTemplate for this method.
-    spyOn(Statil.methods, 'renderTemplate').andCallFake(function(path, data) {
+    spyOn(methods, 'renderTemplate').and.callFake(function(path, data) {
       var buffer = {}
       buffer[path] = this.templates[path](_.clone(data))
       return buffer
@@ -131,6 +138,8 @@ describe('#render', function() {
     this.statil.register(srcFile().body, srcFile().path)
     this.statil.register(srcMeta().body, srcMeta().path)
     this.statil.render(mockLocals())
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   it('survives any argument', function() {
@@ -139,18 +148,18 @@ describe('#render', function() {
 
   it("ignores templates matching the 'ignore' expression", function() {
     // First pass.
-    spyOn(this.statil.templates, mockLegend().path).andCallThrough()
+    spyOn(this.statil.templates, mockLegend().path).and.callThrough()
     this.statil.render()
     expect(this.statil.templates[mockLegend().path]).toHaveBeenCalled()
     // Second pass.
-    this.statil.templates[mockLegend().path].reset()
+    this.statil.templates[mockLegend().path].calls.reset()
     this.statil.metas[mockMeta().path].ignore = pt.basename(mockLegend().name)
     this.statil.render()
     expect(this.statil.templates[mockLegend().path]).not.toHaveBeenCalled()
   })
 
   it('calls #renderTemplate with each path, passing locals data', function() {
-    var spy = Statil.methods.renderTemplate
+    var spy = methods.renderTemplate
     expect(spy).toHaveBeenCalledWith(mockLegend().path, mockLocals())
   })
 
@@ -169,35 +178,37 @@ describe('private rendering methods', function() {
     this.statil = new Statil()
     this.statil.register(srcFile().body, srcFile().path)
     this.statil.register(srcMeta().body, srcMeta().path)
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   describe('#renderTemplate', function() {
 
     beforeEach(function() {
       // Mock #renderThrough for this method.
-      spyOn(Statil.methods, 'renderThrough').andCallFake(function(path, data) {
+      spyOn(methods, 'renderThrough').and.callFake(function(path, data) {
         return this.templates[path](_.clone(data))
       })
     })
 
     it('survives any locals argument', function() {
       callWithAllInputs(function(input) {
-        Statil.methods.renderTemplate.call(this.statil, mockLegend().path, input)
+        methods.renderTemplate.call(this.statil, mockLegend().path, input)
       }.bind(this))
     })
 
     it('in absence of echo, returns pair of path-result', function() {
-      var result = Statil.methods.renderTemplate.call(this.statil, mockLegend().path)
+      var result = methods.renderTemplate.call(this.statil, mockLegend().path)
       var buffer = {}
       buffer[mockLegend().path] = srcFile().rendered
       expect(result).toEqual(buffer)
     })
 
     it('assigns legend to clone of locals, assigns $path, and passes result to renderThrough', function() {
-      Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+      methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
       var locals = _.assign(mockLocals(), mockLegend())
       locals.$path = mockLegend().path
-      expect(Statil.methods.renderThrough).toHaveBeenCalledWith(mockLegend().path, locals)
+      expect(methods.renderThrough).toHaveBeenCalledWith(mockLegend().path, locals)
     })
 
     it("validates 'echo' to resolve to an array of legends", function() {
@@ -208,7 +219,7 @@ describe('private rendering methods', function() {
       legend.echo = {}
       var error
       try {
-        Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+        methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
       } catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
 
@@ -216,7 +227,7 @@ describe('private rendering methods', function() {
       legend.echo = 'random string'
       var error
       try {
-        Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+        methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
       } catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
 
@@ -224,35 +235,39 @@ describe('private rendering methods', function() {
       legend.echo = [{path: 'templates/one'}, {path: 'templates/two'}]
       var error
       try {
-        Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+        methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
       } catch (err) {error = err}
       expect(error).toEqual(jasmine.any(Error))
 
       // Should succeed because is an array of legends.
       legend.echo = mockEchoLegends()
-      Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+      methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
 
       // Should succeed because resolves to an array of legends on the current meta.
       meta.echos = mockEchoLegends()
       legend.echo = 'echos'
-      Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+      methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
     })
 
     it('calls #renderThrough for each echoed locals object, assigning result to virtual path', function() {
       var meta = this.statil.metas[mockMeta().path]
       var legend = _.find(meta.files, {name: mockLegend().name})
       legend.echo = mockEchoLegends()
-      var result = Statil.methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
+      var result = methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
 
-      var args = Statil.methods.renderThrough.argsForCall
+      expect(methods.renderThrough).toHaveBeenCalled()
+      var args = methods.renderThrough.calls.allArgs()
+
       // Make sure it was called with the original path.
       expect(args[0][0]).toBe(mockLegend().path)
       expect(args[1][0]).toBe(mockLegend().path)
+
       // Make sure different locals were given and $path was included.
       var pathFirst = pt.join(pt.dirname(mockLegend().path), mockEchoLegends()[0].name)
       var pathSecond = pt.join(pt.dirname(mockLegend().path), mockEchoLegends()[1].name)
       expect(args[0][1].$path).toBe(pathFirst)
       expect(args[1][1].$path).toBe(pathSecond)
+
       // Make sure some results were assigned under the same paths.
       expect(result[pathFirst]).toBeTruthy()
       expect(result[pathSecond]).toBeTruthy()
@@ -264,7 +279,7 @@ describe('private rendering methods', function() {
 
     beforeEach(function() {
       // Mock #renderOne for this method.
-      spyOn(Statil.methods, 'renderOne').andCallFake(function(path, data) {
+      spyOn(methods, 'renderOne').and.callFake(function(path, data) {
         return srcFile().rendered
       })
     })
@@ -276,21 +291,21 @@ describe('private rendering methods', function() {
         if (typeof input === 'string') return
         var error
         try {
-          Statil.methods.renderThrough.call(statil, input)
+          methods.renderThrough.call(statil, input)
         } catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
       // Should succeed.
       callWithAllInputs(function(input) {
-        Statil.methods.renderThrough.call(statil, mockLegend().path, input)
+        methods.renderThrough.call(statil, mockLegend().path, input)
       })
     })
 
     it('splits the path, compounds each part, and calls #renderOne for each', function() {
       var path = 'templates/page'
 
-      Statil.methods.renderThrough.call(this.statil, 'templates/page')
-      expect(Statil.methods.renderOne).toHaveBeenCalled()
+      methods.renderThrough.call(this.statil, 'templates/page')
+      expect(methods.renderOne).toHaveBeenCalled()
 
       // Expected paths for calls to #renderOne, in that exact order.
       var compoundedPaths = [
@@ -300,22 +315,22 @@ describe('private rendering methods', function() {
       ]
 
       // Find and validate path arguments to #renderOne calls.
-      var paths = _.map(Statil.methods.renderOne.argsForCall, '0')
+      var paths = _.map(methods.renderOne.calls.allArgs(), '0')
       expect(paths).toEqual(compoundedPaths)
     })
 
     it('supplies the given locals to each template, using the same object reference', function() {
       var data = mockLocals()
-      Statil.methods.renderThrough.call(this.statil, mockLegend().path, data)
+      methods.renderThrough.call(this.statil, mockLegend().path, data)
 
       // Data arguments for calls.
-      var dataArgs = _.map(Statil.methods.renderOne.argsForCall, '1')
+      var dataArgs = _.map(methods.renderOne.calls.allArgs(), '1')
       expect(_.every(dataArgs, function(arg) {return arg === data})).toBe(true)
     })
 
     it('includes results of #renderOne calls into the data as $content and returns that result', function() {
       var data = mockLocals()
-      var result = Statil.methods.renderThrough.call(this.statil, mockLegend().path, data)
+      var result = methods.renderThrough.call(this.statil, mockLegend().path, data)
       expect(data.$content).toBe(result)
       expect(result).toBe(srcFile().rendered)
     })
@@ -331,33 +346,33 @@ describe('private rendering methods', function() {
         if (typeof input === 'string') return
         var error
         try {
-          Statil.methods.renderOne.call(statil, input)
+          methods.renderOne.call(statil, input)
         } catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
       // Should succeed.
       callWithAllInputs(function(input) {
-        Statil.methods.renderOne.call(statil, mockLegend().path, input)
+        methods.renderOne.call(statil, mockLegend().path, input)
       })
     })
 
     it("substitutes missing templates with a transluder", function() {
       var data = {$content: srcFile().rendered}
-      var result = Statil.methods.renderOne.call(this.statil, 'templates/index', data)
+      var result = methods.renderOne.call(this.statil, 'templates/index', data)
       expect(result).toBe(srcFile().rendered)
     })
 
     it('calls #locals to enhance the locals', function() {
       var data = Object.create(null)
-      spyOn(Statil.methods, 'locals').andCallThrough()
-      Statil.methods.renderOne.call(this.statil, mockLegend().path, data)
-      expect(Statil.methods.locals).toHaveBeenCalledWith(mockLegend().path, data)
+      spyOn(methods, 'locals').and.callThrough()
+      methods.renderOne.call(this.statil, mockLegend().path, data)
+      expect(methods.locals).toHaveBeenCalledWith(mockLegend().path, data)
     })
 
     it('passes locals to template', function() {
       var data = mockLocals()
-      spyOn(this.statil.templates, mockLegend().path).andCallThrough()
-      Statil.methods.renderOne.call(this.statil, mockLegend().path, data)
+      spyOn(this.statil.templates, mockLegend().path).and.callThrough()
+      methods.renderOne.call(this.statil, mockLegend().path, data)
       expect(this.statil.templates[mockLegend().path]).toHaveBeenCalledWith(data)
     })
 
@@ -371,6 +386,8 @@ describe('pathing methods', function() {
     this.statil = new Statil()
     this.statil.register(srcFile().body, srcFile().path)
     this.statil.register(srcMeta().body, srcMeta().path)
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   describe('#meta', function() {
@@ -436,12 +453,14 @@ describe('private utility methods', function() {
     this.statil = new Statil()
     this.statil.register(srcFile().body, srcFile().path)
     this.statil.register(srcMeta().body, srcMeta().path)
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   describe('#imports', function() {
 
     it('creates default imports attributes', function() {
-      var imports = Statil.methods.imports.call(this.statil)
+      var imports = methods.imports.call(this.statil)
       expect(imports).toEqual(jasmine.any(Object))
       expect(imports.$include).toEqual(jasmine.any(Function))
       expect(imports.$entitle).toEqual(jasmine.any(Function))
@@ -455,7 +474,7 @@ describe('private utility methods', function() {
 
     beforeEach(function() {
       this.data = Object.create(null)
-      Statil.methods.locals.call(this.statil, mockLegend().path, this.data)
+      methods.locals.call(this.statil, mockLegend().path, this.data)
     })
 
     it('only accepts a string path and a writable data hash', function() {
@@ -464,21 +483,21 @@ describe('private utility methods', function() {
       callWithAllInputs(function(input) {
         if (typeof input === 'string') return
         var error
-        try {Statil.methods.locals.call(statil, input, {})} catch (err) {error = err}
+        try {methods.locals.call(statil, input, {})} catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
       // Second argument.
       callWithAllInputs(function(input) {
         if (_.isObject(input)) return
         var error
-        try {Statil.methods.locals.call(statil, '', input)} catch (err) {error = err}
+        try {methods.locals.call(statil, '', input)} catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
     })
 
     it('is only defined to produce side effects with no return value', function() {
       var locals = Object.create(null)
-      var output = Statil.methods.locals.call(this.statil, mockLegend().path, locals)
+      var output = methods.locals.call(this.statil, mockLegend().path, locals)
 
       expect(output).toBeUndefined()
       expect(_.keys(locals).length).toBeGreaterThan(0)
@@ -494,10 +513,10 @@ describe('private utility methods', function() {
     })
 
     it("calls #meta to find the current directory's metadata and assigns it, if available", function() {
-      spyOn(Statil.prototype, 'meta').andCallThrough()
-      Statil.methods.locals.call(this.statil, mockLegend().path, this.data)
+      spyOn(Statil.prototype, 'meta').and.callThrough()
+      methods.locals.call(this.statil, mockLegend().path, this.data)
       expect(this.data.$meta).toEqual(mockMeta())
-      expect(Statil.prototype.meta).toHaveBeenCalledWith(mockLegend().path)
+      expect(Statil.prototype.meta.calls.mostRecent().args).toEqual([mockLegend().path])
     })
 
     it("assigns the current file's legend, if available; uses _.defaults", function() {
@@ -515,10 +534,10 @@ describe('private utility methods', function() {
       var statil = new Statil()
       // First pass.
       statil.metas = {'templates': {ignore: null}}
-      expect(Statil.methods.isIgnored.call(statil, 'templates/page')).toBe(false)
+      expect(methods.isIgnored.call(statil, 'templates/page')).toBe(false)
       // Second pass.
       statil.metas = {'templates': {ignore: 'pag.*'}}
-      expect(Statil.methods.isIgnored.call(statil, 'templates/page')).toBe(true)
+      expect(methods.isIgnored.call(statil, 'templates/page')).toBe(true)
     })
 
   })
@@ -534,7 +553,9 @@ describe('template methods', function() {
     this.statil = new Statil()
     this.statil.register(srcFile().body, srcFile().path)
     this.statil.register(srcMeta().body, srcMeta().path)
-    this.imports = Statil.methods.imports.call(this.statil)
+    this.imports = methods.imports.call(this.statil)
+    // Required for proper matching of hash tables and objects.
+    jasmine.addCustomEqualityTester(_.isEqual)
   })
 
   describe('$include', function() {
@@ -545,20 +566,21 @@ describe('template methods', function() {
 
     it('clones the given data, passes the arguments into #renderOne', function() {
       // Setup.
-      spyOn(Statil.methods, 'renderOne').andCallThrough()
+      spyOn(methods, 'renderOne').and.callThrough()
       var data = mockLocals()
 
       this.imports.$include(mockLegend().path, data)
 
       // Both arguments must have been included.
-      expect(Statil.methods.renderOne.mostRecentCall.args[0]).toBe(mockLegend().path)
-      expect(Statil.methods.renderOne.mostRecentCall.args[1].secret).toBe(data.secret)
+      expect(methods.renderOne).toHaveBeenCalled()
+      expect(methods.renderOne.calls.mostRecent().args[0]).toBe(mockLegend().path)
+      expect(methods.renderOne.calls.mostRecent().args[1].secret).toBe(data.secret)
       // The data must have been cloned.
-      expect(Statil.methods.renderOne).not.toHaveBeenCalledWith(data)
+      expect(methods.renderOne).not.toHaveBeenCalledWith(data)
     })
 
     it('returns the result of the #renderOne call', function() {
-      spyOn(Statil.methods, 'renderOne').andReturn(mockLocals().secret)
+      spyOn(methods, 'renderOne').and.returnValue(mockLocals().secret)
       expect(this.imports.$include(mockLegend().path)).toBe(mockLocals().secret)
     })
 
@@ -645,10 +667,10 @@ describe('template methods', function() {
     })
 
     it('calls into $active and wraps the result into an attribute', function() {
-      spyOn(this.imports, '$active').andCallThrough()
+      spyOn(methods, '$active').and.callThrough()
       expect(this.imports.$act('index', {})).toBe('')
       expect(this.imports.$act('index', {$path: 'index/stuff'})).toBe('class="active"')
-      expect(this.imports.$active).toHaveBeenCalled()
+      expect(methods.$active).toHaveBeenCalled()
     })
 
   })
