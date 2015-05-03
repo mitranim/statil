@@ -47,7 +47,7 @@ describe('Statil constructor', function() {
 
   it('creates mandatory default fields', function() {
     expect(this.statil.templates).toEqual(jasmine.any(Object))
-    expect(this.statil.metas).toEqual(jasmine.any(Object))
+    expect(this.statil.meta).toEqual(jasmine.any(Object))
   })
 
 })
@@ -83,14 +83,14 @@ describe('#register', function() {
     it('under relative directory paths', function() {
       var statil = new Statil()
       statil.register(srcMeta().body, srcMeta().path)
-      var path = _.first(_.keys(statil.metas))
+      var path = _.first(_.keys(statil.meta))
       expect(path).toBe(pt.relative(process.cwd(), mockMeta().path))
     })
 
     it('parsing them from YAML into object', function() {
       var statil = new Statil()
       statil.register(srcMeta().body, srcMeta().path)
-      var meta = _.first(_.values(statil.metas))
+      var meta = _.first(_.values(statil.meta))
       expect(meta).toEqual(mockMeta())
     })
 
@@ -153,7 +153,7 @@ describe('#render', function() {
     expect(this.statil.templates[mockLegend().path]).toHaveBeenCalled()
     // Second pass.
     this.statil.templates[mockLegend().path].calls.reset()
-    this.statil.metas[mockMeta().path].ignore = pt.basename(mockLegend().name)
+    this.statil.meta[mockMeta().path].ignore = pt.basename(mockLegend().name)
     this.statil.render()
     expect(this.statil.templates[mockLegend().path]).not.toHaveBeenCalled()
   })
@@ -212,7 +212,7 @@ describe('private rendering methods', function() {
     })
 
     it("validates 'echo' to resolve to an array of legends", function() {
-      var meta = this.statil.metas[mockMeta().path]
+      var meta = this.statil.meta[mockMeta().path]
       var legend = _.find(meta.files, {name: mockLegend().name})
 
       // Should fail because isn't an array.
@@ -250,7 +250,7 @@ describe('private rendering methods', function() {
     })
 
     it('calls #renderThrough for each echoed locals object, assigning result to virtual path', function() {
-      var meta = this.statil.metas[mockMeta().path]
+      var meta = this.statil.meta[mockMeta().path]
       var legend = _.find(meta.files, {name: mockLegend().name})
       legend.echo = mockEchoLegends()
       var result = methods.renderTemplate.call(this.statil, mockLegend().path, mockLocals())
@@ -397,7 +397,7 @@ describe('pathing methods', function() {
       callWithAllInputs(function(input) {
         if (typeof input === 'string') return
         var error
-        try {statil.meta(input)} catch (err) {error = err}
+        try {statil.metaAtPath(input)} catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
     })
@@ -405,14 +405,14 @@ describe('pathing methods', function() {
     it("returns the metadata value associated with the dirname of the given path", function() {
       this.statil.register('special: fried cricket', 'abstract/meta.yaml')
       this.statil.register('', 'abstract/page.html')
-      expect(this.statil.meta('abstract/page')).toEqual({special: 'fried cricket'})
-      expect(this.statil.meta('nowhere')).toBeUndefined()
+      expect(this.statil.metaAtPath('abstract/page')).toEqual({special: 'fried cricket'})
+      expect(this.statil.metaAtPath('nowhere')).toBeUndefined()
     })
 
     it('allows to indicate a directory path with a trailing slash', function() {
       this.statil.register('special: fried cricket', 'abstract/meta.yaml')
-      expect(this.statil.meta('abstract/')).toEqual({special: 'fried cricket'})
-      expect(this.statil.meta('abstract')).toBeUndefined()
+      expect(this.statil.metaAtPath('abstract/')).toEqual({special: 'fried cricket'})
+      expect(this.statil.metaAtPath('abstract')).toBeUndefined()
     })
 
   })
@@ -424,23 +424,23 @@ describe('pathing methods', function() {
       callWithAllInputs(function(input) {
         if (typeof input === 'string') return
         var error
-        try {statil.legend(input)} catch (err) {error = err}
+        try {statil.fileLegend(input)} catch (err) {error = err}
         expect(error).toEqual(jasmine.any(Error))
       })
     })
 
     it('without meta or legend, returns undefined', function() {
       // Pass without meta.
-      this.statil.metas = Object.create(null)
-      expect(this.statil.legend(mockLegend().path)).toBeUndefined()
+      this.statil.meta = Object.create(null)
+      expect(this.statil.fileLegend(mockLegend().path)).toBeUndefined()
 
       // Pass without legend.
-      this.statil.metas[mockLegend().dirname] = {files: []}
-      expect(this.statil.legend(mockLegend().path)).toBeUndefined()
+      this.statil.meta[mockLegend().dirname] = {files: []}
+      expect(this.statil.fileLegend(mockLegend().path)).toBeUndefined()
     })
 
     it("finds file legend with matching 'name' in same directory's meta", function() {
-      expect(this.statil.legend(mockLegend().path)).toEqual(mockLegend())
+      expect(this.statil.fileLegend(mockLegend().path)).toEqual(mockLegend())
     })
 
   })
@@ -513,13 +513,13 @@ describe('private utility methods', function() {
     })
 
     it("calls #meta to find the current directory's metadata and assigns it, if available", function() {
-      spyOn(Statil.prototype, 'meta').and.callThrough()
+      spyOn(Statil.prototype, 'metaAtPath').and.callThrough()
       methods.locals.call(this.statil, mockLegend().path, this.data)
       expect(this.data.$meta).toEqual(mockMeta())
-      expect(Statil.prototype.meta.calls.mostRecent().args).toEqual([mockLegend().path])
+      expect(Statil.prototype.metaAtPath.calls.mostRecent().args).toEqual([mockLegend().path])
     })
 
-    it("assigns the current file's legend, if available; uses _.defaults", function() {
+    it("assigns the current file's legend, if available", function() {
       var data = this.data
       expect(_.every(_.keys(mockLegend()), function(key) {
         return _.has(data, key)
@@ -533,10 +533,10 @@ describe('private utility methods', function() {
     it('correctly aborts ignored path', function() {
       var statil = new Statil()
       // First pass.
-      statil.metas = {'templates': {ignore: null}}
+      statil.meta = {'templates': {ignore: null}}
       expect(methods.isIgnored.call(statil, 'templates/page')).toBe(false)
       // Second pass.
-      statil.metas = {'templates': {ignore: 'pag.*'}}
+      statil.meta = {'templates': {ignore: 'pag.*'}}
       expect(methods.isIgnored.call(statil, 'templates/page')).toBe(true)
     })
 

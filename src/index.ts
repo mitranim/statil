@@ -14,9 +14,13 @@ import {Hash} from './statics'
 
 export default class Statil {
 
+  // Hash of locals (typically static functions) that will be made available to
+  // each template.
   imports: {}
+  // Map of file paths to compiled templates.
   templates: {}
-  metas: {}
+  // Map of directory paths to metadata objects.
+  meta: {}
 
   /**
    * Statil constructor. Takes a hash of options for lodash's template parser,
@@ -30,11 +34,8 @@ export default class Statil {
     // Merge provided options into self.
     _.merge(this, options)
 
-    // Map of parsed template paths to compiled templates.
     this.templates = new Hash()
-
-    // Map of metadata directory paths to parsed metadata objects.
-    this.metas = new Hash()
+    this.meta = new Hash()
   }
 
   /***************************** Public Methods ******************************/
@@ -65,11 +66,11 @@ export default class Statil {
       // Strip the file name.
       path = pt.dirname(path)
       // Mandate no more than one meta per path.
-      if (this.metas[path]) {
+      if (this.meta[path]) {
         throw new Error(`duplicate meta for path: ${path}`)
       }
       // Parse and register the meta.
-      this.metas[path] = yaml.safeLoad(source)
+      this.meta[path] = yaml.safeLoad(source)
     }
     /**
      * Otherwise register as a template.
@@ -117,7 +118,7 @@ export default class Statil {
    * Takes a path to a file and returns the metadata associated with its
    * directory. Also accepts a path to a directory with a trailing slash.
    */
-  meta(path: string): any {
+  metaAtPath(path: string): any {
     // Validate the input.
     statics.validateString(path)
 
@@ -127,7 +128,7 @@ export default class Statil {
     // Otherwise strip the file name.
     else dirname = pt.dirname(path)
 
-    return this.metas[dirname]
+    return this.meta[dirname]
   }
 
   /**
@@ -135,11 +136,11 @@ export default class Statil {
    * with its directory, if available. The legend is identified by having the
    * same 'name' property as the file's name.
    */
-  legend(path: string): Legend|void {
+  fileLegend(path: string): Legend|void {
     // Validate the input.
     statics.validateString(path)
     // Return the legend or undefined.
-    var meta = this.meta(path)
+    var meta = this.metaAtPath(path)
     if (meta) return _.find(meta.files, {name: pt.basename(path)})
   }
 

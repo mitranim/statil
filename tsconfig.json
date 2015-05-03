@@ -16,6 +16,7 @@
         "!./node_modules/**/*.ts"
     ],
     "files": [
+        "./definitions/def.d.ts",
         "./definitions/lib.d.ts",
         "./gulpfile.ts",
         "./src/index.ts",

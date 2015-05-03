@@ -18,7 +18,7 @@ import {Hash} from './statics'
  * Methods store. Used for spying in tests. Library code must always access
  * methods as properties of this object.
  */
-var methods = new Hash()
+var methods: any = new Hash()
 export default methods
 
 /*-------------------------------- Rendering --------------------------------*/
@@ -41,7 +41,7 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   var buffer = new Hash()
 
   // Enhance the locals with the legend.
-  var legend = this.legend(path)
+  var legend = this.fileLegend(path)
   data = _.assign(new Hash(data), legend)
 
   // Default datas group.
@@ -51,7 +51,7 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   // Echo for each sublegend, if available.
   if (legend && legend.echo) {
     // Multiply and validate the legends.
-    var legends = statics.echoLegend(this.meta(path), legend)
+    var legends = statics.echoLegend(this.metaAtPath(path), legend)
     // Map the data.
     datas = legends.map(legend => {
       // Convert inherited properties into own properties.
@@ -199,7 +199,7 @@ methods.locals = function(path: string, data: Data): void {
   data.$ = data
 
   // Include the metadata associated with the current directory, if any.
-  var meta = this.meta(path)
+  var meta = this.metaAtPath(path)
   if (meta) data.$meta = meta
 
   /**
@@ -207,8 +207,8 @@ methods.locals = function(path: string, data: Data): void {
    * Note: these locals are intentionally allowed to "bleed through" to
    * ancestor templates during a Statil#renderThrough pass.
    */
-  var legend = this.legend(path)
-  if (legend) _.defaults(data, legend)
+  var legend = this.fileLegend(path)
+  if (legend) _.assign(data, legend)
 }
 
 /**
@@ -216,7 +216,7 @@ methods.locals = function(path: string, data: Data): void {
  * expression in that directory's metadata, if any.
  */
 methods.isIgnored = function(path: string): boolean {
-  var meta = this.meta(path)
+  var meta = this.metaAtPath(path)
   if (!meta || !meta.ignore) return false
   statics.validateTruthyString(meta.ignore)
   return !!pt.basename(path).match(meta.ignore)

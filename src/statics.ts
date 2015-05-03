@@ -93,7 +93,7 @@ export function resolveEchos(meta: {}, echo?: string|Legend[]): Legend[] {
   else echos = echo
   // Mandate the result to be an array of legends.
   if (!_.isArray(echos)) {
-    throw new TypeError('expected echos to resolve to an array, got: ' + echos)
+    throw new TypeError(`expected echos to resolve to an array, got: ${echos}`)
   }
   _.each(echos, validateLegend)
   return echos
@@ -114,7 +114,7 @@ export function stripExt(path: string): string {
  */
 export function validateWritable(value: {}): void {
   if (!_.isObject(value)) {
-    throw new TypeError('expected a writable object, got: ' + value)
+    throw new TypeError(`expected a writable object, got: ${value}`)
   }
 }
 
@@ -124,7 +124,7 @@ export function validateWritable(value: {}): void {
 export function validateLegend(legend?: Legend): void {
   validateWritable(legend)
   if (typeof legend.name !== 'string' || !legend.name) {
-    throw new TypeError('expected a legend to contain a non-empty name, got: ' + legend.name)
+    throw new TypeError(`expected a legend to contain a non-empty name, got: ${legend.name}`)
   }
 }
 
@@ -133,7 +133,7 @@ export function validateLegend(legend?: Legend): void {
  */
 export function validateString(value?: string): void {
   if (typeof value !== 'string') {
-    throw new TypeError('expected a string, got: ' + value)
+    throw new TypeError(`expected a string, got: ${value}`)
   }
 }
 
@@ -143,6 +143,6 @@ export function validateString(value?: string): void {
 export function validateTruthyString(value?: string): void {
   validateString(value)
   if (!value) {
-    throw new TypeError('expected a non-empty string, got: ' + value)
+    throw new TypeError(`expected a non-empty string, got: ${value}`)
   }
 }
