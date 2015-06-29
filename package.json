@@ -1,9 +1,10 @@
 {
   "name": "statil",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Most lightweight static site generator ever.",
   "main": "lib/index",
   "scripts": {
+    "start": "gulp",
     "gulp": "gulp",
     "test": "env JASMINE_CONFIG_PATH=test/jasmine.json jasmine",
     "autotest": "watch 'npm test' lib test",

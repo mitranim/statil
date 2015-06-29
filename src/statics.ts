@@ -69,7 +69,7 @@ export function echoLegend(meta: {}, legend: Legend): Legend[] {
   // In absence of an echo property, echo the legend as itself.
   if (!_.has(legend, 'echo')) return [legend]
   // Resolve the echos relatively to the meta.
-  var echos: Legend[] = resolveEchos(meta, legend.echo)
+  var echos: Legend[] = resolveEchos(meta, legend, legend.echo)
 
   // Make each echoed legend inherit from the original and add its own
   // properties.
@@ -86,11 +86,14 @@ export function echoLegend(meta: {}, legend: Legend): Legend[] {
 /**
  * Resolves the given echos key or array relatively to the given meta.
  */
-export function resolveEchos(meta: {}, echo?: string|Legend[]): Legend[] {
+export function resolveEchos(meta: {}, legend?: Legend, echo?: string|Legend[]): Legend[] {
   var echos: Legend[] = []
   // If the echo is a string, assume it to be a key for a meta property.
-  if (typeof echo === 'string') echos = meta[echo]
-  else echos = echo
+  if (typeof echo === 'string') {
+    echos = legend && legend[echo] || meta[echo]
+  } else {
+    echos = echo
+  }
   // Mandate the result to be an array of legends.
   if (!_.isArray(echos)) {
     throw new TypeError(`expected echos to resolve to an array, got: ${echos}`)

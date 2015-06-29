@@ -56,6 +56,7 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   if (legend && legend.echo) {
     // Multiply and validate the legends.
     var legends = statics.echoLegend(this.metaAtPath(path), legend)
+
     // Map the data.
     datas = legends.map(legend => {
       // Convert inherited properties into own properties.
@@ -124,7 +125,12 @@ methods.renderOne = function(path: string, data?: Data): string {
   methods.locals.call(this, path, data)
 
   // Render the result.
-  return template.call(this, data)
+  try {
+    return template.call(this, data)
+  } catch (err) {
+    console.error('Error when rendering template at path:', path)
+    throw err
+  }
 }
 
 /*---------------------------------- Setup ----------------------------------*/
