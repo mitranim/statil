@@ -8,24 +8,5 @@
         "removeComments": false,
         "noLib": false
     },
-    "compileOnSave": false,
-    "filesGlob": [
-        "./**/*.ts",
-        "./typings/**/*.d.ts",
-        "./definitions/**/*.d.ts",
-        "!./node_modules/**/*.ts"
-    ],
-    "files": [
-        "./definitions/def.d.ts",
-        "./definitions/lib.d.ts",
-        "./gulpfile.ts",
-        "./src/index.ts",
-        "./src/methods.ts",
-        "./src/statics.ts",
-        "./typings/gulp/gulp.d.ts",
-        "./typings/js-yaml/js-yaml.d.ts",
-        "./typings/lodash/lodash.d.ts",
-        "./typings/node/node.d.ts",
-        "./typings/tsd.d.ts"
-    ]
+    "compileOnSave": false
 }

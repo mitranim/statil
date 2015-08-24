@@ -1,6 +1,6 @@
 {
   "name": "statil",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Most lightweight static site generator ever.",
   "main": "lib/index",
   "scripts": {
@@ -22,18 +22,16 @@
     "url": "https://github.com/Mitranim/statil.git"
   },
   "dependencies": {
-    "js-yaml": "^3.3.0",
-    "lodash": "^3.8.0"
+    "js-yaml": "^3.4.0",
+    "lodash": "^3.10.1"
   },
   "devDependencies": {
-    "babel": "^5.2.6",
-    "gulp": "^3.8.11",
-    "gulp-babel": "^5.1.0",
-    "gulp-load-plugins": "^0.10.0",
-    "gulp-plumber": "^1.0.0",
-    "gulp-watch": "^4.2.4",
-    "jasmine": "^2.3.1",
-    "jasmine-core": "^2.3.0",
+    "gulp": "^3.9.0",
+    "gulp-load-plugins": "^1.0.0-rc.1",
+    "gulp-typescript": "^2.8.1",
+    "gulp-watch": "^4.3.5",
+    "jasmine": "^2.3.2",
+    "jasmine-core": "^2.3.4",
     "watch": "^0.16.0"
   }
 }

@@ -4,10 +4,10 @@
 
 var _      = require('lodash')
 var pt     = require('path')
-var Statil = require('../lib/index')
+var Statil = require('../lib/index').Statil
 var yaml   = require('js-yaml')
 
-var methods = require('../lib/methods')
+var methods = require('../lib/methods').methods
 var statics = require('../lib/statics')
 
 /*********************************** Specs ***********************************/

@@ -1,18 +1,18 @@
 /******************************* Dependencies ********************************/
 
 // Third party.
-import _ from 'lodash'
+import * as _ from 'lodash'
 import * as pt from 'path'
 import * as yaml from 'js-yaml'
 
 // Local.
-import methods from './methods'
+import {methods} from './methods'
 import * as statics from './statics'
 import {Hash} from './statics'
 
 /******************************* Public Class ********************************/
 
-export default class Statil {
+export class Statil {
 
   // Hash of locals (typically static functions) that will be made available to
   // each template.
@@ -64,7 +64,7 @@ export default class Statil {
     /**
      * If this is a yaml or json file, register as a meta.
      */
-    var stats = pt.parse(path)
+    let stats = pt.parse(path)
     if (stats.ext === '.yaml' || stats.ext === '.json') {
       // Strip the file name.
       path = pt.dirname(path)
@@ -105,9 +105,9 @@ export default class Statil {
    * Returns a hash of resulting paths and rendered files.
    */
   render(data?: Data): Hash {
-    var buffer = new Hash()
+    let buffer = new Hash()
 
-    for (var path in this.templates) {
+    for (let path in this.templates) {
       if (methods.isIgnored.call(this, path)) continue
       _.assign(buffer, methods.renderTemplate.call(this, path, data))
     }
@@ -125,7 +125,7 @@ export default class Statil {
     // Validate the input.
     statics.validateString(path)
 
-    var dirname
+    let dirname
     // Allow to indicate a directory path with a trailing slash.
     if (path.slice(-1) === '/') dirname = path.slice(0, -1)
     // Otherwise strip the file name.
@@ -143,8 +143,7 @@ export default class Statil {
     // Validate the input.
     statics.validateString(path)
     // Return the legend or undefined.
-    var meta = this.metaAtPath(path)
+    let meta = this.metaAtPath(path)
     if (meta) return _.find(meta.files, {name: pt.basename(path)})
   }
-
 }

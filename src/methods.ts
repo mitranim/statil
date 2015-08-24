@@ -5,7 +5,7 @@
 /******************************* Dependencies ********************************/
 
 // Third party.
-import _ from 'lodash'
+import * as _ from 'lodash'
 import * as pt from 'path'
 
 // Local.
@@ -18,8 +18,7 @@ import {Hash} from './statics'
  * Methods store. Used for spying in tests. Library code must always access
  * methods as properties of this object.
  */
-var methods: any = new Hash()
-export default methods
+export const methods: any = new Hash()
 
 /*-------------------------------- Rendering --------------------------------*/
 
@@ -42,20 +41,20 @@ export default methods
  * The return value is a map of virtual paths to results.
  */
 methods.renderTemplate = function(path: string, data?: Data): Hash {
-  var buffer = new Hash()
+  let buffer = new Hash()
 
   // Enhance the locals with the legend.
-  var legend = this.fileLegend(path)
+  let legend = this.fileLegend(path)
   data = _.assign(new Hash(data), legend)
 
   // Default datas group.
-  var datas = [data]
+  let datas = [data]
   data.name = pt.basename(path)
 
   // Echo for each sublegend, if available.
   if (legend && legend.echo) {
     // Multiply and validate the legends.
-    var legends = statics.echoLegend(this.metaAtPath(path), legend)
+    let legends = statics.echoLegend(this.metaAtPath(path), legend)
 
     // Map the data.
     datas = legends.map(legend => {
@@ -68,8 +67,8 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   // Render the template for each locals clone, assigning the result under the
   // virtual path.
   _.each(datas, data => {
-    var echoPath = data.$path = pt.join(pt.dirname(path), data.name)
-    var result: string = methods.renderThrough.call(this, path, data)
+    let echoPath = data.$path = pt.join(pt.dirname(path), data.name)
+    let result: string = methods.renderThrough.call(this, path, data)
 
     // Rename the path, if a 'rename' method is available.
     if (typeof this.rename === 'function') {
@@ -99,7 +98,7 @@ methods.renderThrough = function(path: string, data?: Data): string {
   if (!_.isObject(data)) data = new Hash()
 
   // Get the paths at which to render.
-  var compounded = statics.split(path)
+  let compounded = statics.split(path)
 
   // Render the result hierarchically.
   _.eachRight(compounded, compoundedPath => {
@@ -116,7 +115,7 @@ methods.renderThrough = function(path: string, data?: Data): string {
 methods.renderOne = function(path: string, data?: Data): string {
   // Validate the path and resolve it to a template function.
   statics.validateTruthyString(path)
-  var template = this.templates[statics.stripExt(path)] || statics.transclude
+  let template = this.templates[statics.stripExt(path)] || statics.transclude
 
   // Make sure data is a writable object.
   if (!_.isObject(data)) data = new Hash()
@@ -184,7 +183,7 @@ methods.$active = function(path: string, data?: Data): string {
   if (typeof path !== 'string') return ''
   if (typeof data.$path !== 'string') return ''
 
-  var relative = pt.relative(path, data.$path)
+  let relative = pt.relative(path, data.$path)
   if (relative[0] !== '.') return 'active'
   return ''
 }
@@ -217,7 +216,7 @@ methods.locals = function(path: string, data: Data): void {
   data.$ = data
 
   // Include the metadata associated with the current directory, if any.
-  var meta = this.metaAtPath(path)
+  let meta = this.metaAtPath(path)
   if (meta) data.$meta = meta
 
   /**
@@ -225,7 +224,7 @@ methods.locals = function(path: string, data: Data): void {
    * Note: these locals are intentionally allowed to "bleed through" to
    * ancestor templates during a Statil#renderThrough pass.
    */
-  var legend = this.fileLegend(path)
+  let legend = this.fileLegend(path)
   if (legend) _.assign(data, legend)
 }
 
@@ -234,7 +233,7 @@ methods.locals = function(path: string, data: Data): void {
  * expression in that directory's metadata, if any.
  */
 methods.isIgnored = function(path: string): boolean {
-  var meta = this.metaAtPath(path)
+  let meta = this.metaAtPath(path)
   if (!meta || !meta.ignore) return false
   statics.validateTruthyString(meta.ignore)
   return !!pt.basename(path).match(meta.ignore)

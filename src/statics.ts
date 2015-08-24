@@ -4,7 +4,7 @@
 
 /******************************* Dependencies ********************************/
 
-import _ from 'lodash'
+import * as _ from 'lodash'
 import * as pt from 'path'
 
 /********************************** Statics **********************************/
@@ -24,8 +24,8 @@ Hash.prototype = Object.create(null)
 export function split(path: string): string[] {
   validateTruthyString(path)
 
-  var parts = path.split(pt.sep)
-  var compounded = []
+  let parts = path.split(pt.sep)
+  let compounded = []
 
   // Compound each path.
   parts.forEach((part, index) => {
@@ -55,7 +55,7 @@ export function split(path: string): string[] {
 /**
  * Base transcluder template used as a substitute for a missing 'index' file.
  */
-export var transclude: Function = _.template('<%= $content %>')
+export let transclude: Function = _.template('<%= $content %>')
 
 /**
  * Resolves a legend relatively to a meta by echoing it zero or more times,
@@ -69,12 +69,12 @@ export function echoLegend(meta: {}, legend: Legend): Legend[] {
   // In absence of an echo property, echo the legend as itself.
   if (!_.has(legend, 'echo')) return [legend]
   // Resolve the echos relatively to the meta.
-  var echos: Legend[] = resolveEchos(meta, legend, legend.echo)
+  let echos: Legend[] = resolveEchos(meta, legend, legend.echo)
 
   // Make each echoed legend inherit from the original and add its own
   // properties.
   echos = _.map(echos, echo => {
-    var copy = Object.create(legend)
+    let copy = Object.create(legend)
     _.assign(copy, echo)
     return copy
   })
@@ -87,7 +87,7 @@ export function echoLegend(meta: {}, legend: Legend): Legend[] {
  * Resolves the given echos key or array relatively to the given meta.
  */
 export function resolveEchos(meta: {}, legend?: Legend, echo?: string|Legend[]): Legend[] {
-  var echos: Legend[] = []
+  let echos: Legend[] = []
   // If the echo is a string, assume it to be a key for a meta property.
   if (typeof echo === 'string') {
     echos = legend && legend[echo] || meta[echo]
