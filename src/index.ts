@@ -64,7 +64,7 @@ export class Statil {
     /**
      * If this is a yaml or json file, register as a meta.
      */
-    let stats = pt.parse(path)
+    const stats = pt.parse(path)
     if (stats.ext === '.yaml' || stats.ext === '.json') {
       // Strip the file name.
       path = pt.dirname(path)
@@ -86,11 +86,12 @@ export class Statil {
       try {
         this.templates[path] = _.template(source, new Hash(this))
       } catch (err) {
+        const message = 'Failed to compile template at path `' + path + '`'
         if (err && err.message) {
-          err.message = `Failed to compile a template for path: '${path}'. Error: ${err.message}`
+          err.message = message + `. Error: ${err.message}`
           throw err
         }
-        throw new Error(`Failed to compile a template for path: ${path}`)
+        throw new Error(message)
       }
     }
   }
@@ -105,9 +106,9 @@ export class Statil {
    * Returns a hash of resulting paths and rendered files.
    */
   render(data?: Data): Hash {
-    let buffer = new Hash()
+    const buffer = new Hash()
 
-    for (let path in this.templates) {
+    for (const path in this.templates) {
       if (methods.isIgnored.call(this, path)) continue
       _.assign(buffer, methods.renderTemplate.call(this, path, data))
     }
@@ -125,11 +126,9 @@ export class Statil {
     // Validate the input.
     statics.validateString(path)
 
-    let dirname
-    // Allow to indicate a directory path with a trailing slash.
-    if (path.slice(-1) === '/') dirname = path.slice(0, -1)
-    // Otherwise strip the file name.
-    else dirname = pt.dirname(path)
+    // Allow to indicate a directory path with a trailing slash, otherwise strip
+    // the file name.
+    const dirname = path.slice(-1) === '/' ? path.slice(0, -1) : pt.dirname(path)
 
     return this.meta[dirname]
   }
@@ -143,7 +142,7 @@ export class Statil {
     // Validate the input.
     statics.validateString(path)
     // Return the legend or undefined.
-    let meta = this.metaAtPath(path)
+    const meta = this.metaAtPath(path)
     if (meta) return _.find(meta.files, {name: pt.basename(path)})
   }
 }

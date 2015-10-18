@@ -24,7 +24,7 @@ Hash.prototype = Object.create(null)
 export function split(path: string): string[] {
   validateTruthyString(path)
 
-  let parts = path.split(pt.sep)
+  const parts = path.split(pt.sep)
   let compounded = []
 
   // Compound each path.
@@ -55,7 +55,7 @@ export function split(path: string): string[] {
 /**
  * Base transcluder template used as a substitute for a missing 'index' file.
  */
-export let transclude: Function = _.template('<%= $content %>')
+export const transclude: Function = _.template('<%= $content %>')
 
 /**
  * Resolves a legend relatively to a meta by echoing it zero or more times,
@@ -74,7 +74,7 @@ export function echoLegend(meta: {}, legend: Legend): Legend[] {
   // Make each echoed legend inherit from the original and add its own
   // properties.
   echos = _.map(echos, echo => {
-    let copy = Object.create(legend)
+    const copy = Object.create(legend)
     _.assign(copy, echo)
     return copy
   })

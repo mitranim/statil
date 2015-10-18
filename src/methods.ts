@@ -41,10 +41,10 @@ export const methods: any = new Hash()
  * The return value is a map of virtual paths to results.
  */
 methods.renderTemplate = function(path: string, data?: Data): Hash {
-  let buffer = new Hash()
+  const buffer = new Hash()
 
   // Enhance the locals with the legend.
-  let legend = this.fileLegend(path)
+  const legend = this.fileLegend(path)
   data = _.assign(new Hash(data), legend)
 
   // Default datas group.
@@ -54,7 +54,7 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   // Echo for each sublegend, if available.
   if (legend && legend.echo) {
     // Multiply and validate the legends.
-    let legends = statics.echoLegend(this.metaAtPath(path), legend)
+    const legends = statics.echoLegend(this.metaAtPath(path), legend)
 
     // Map the data.
     datas = legends.map(legend => {
@@ -68,7 +68,7 @@ methods.renderTemplate = function(path: string, data?: Data): Hash {
   // virtual path.
   _.each(datas, data => {
     let echoPath = data.$path = pt.join(pt.dirname(path), data.name)
-    let result: string = methods.renderThrough.call(this, path, data)
+    const result: string = methods.renderThrough.call(this, path, data)
 
     // Rename the path, if a 'rename' method is available.
     if (typeof this.rename === 'function') {
@@ -98,7 +98,7 @@ methods.renderThrough = function(path: string, data?: Data): string {
   if (!_.isObject(data)) data = new Hash()
 
   // Get the paths at which to render.
-  let compounded = statics.split(path)
+  const compounded = statics.split(path)
 
   // Render the result hierarchically.
   _.eachRight(compounded, compoundedPath => {
@@ -115,7 +115,7 @@ methods.renderThrough = function(path: string, data?: Data): string {
 methods.renderOne = function(path: string, data?: Data): string {
   // Validate the path and resolve it to a template function.
   statics.validateTruthyString(path)
-  let template = this.templates[statics.stripExt(path)] || statics.transclude
+  const template = this.templates[statics.stripExt(path)] || statics.transclude
 
   // Make sure data is a writable object.
   if (!_.isObject(data)) data = new Hash()
@@ -127,7 +127,7 @@ methods.renderOne = function(path: string, data?: Data): string {
   try {
     return template.call(this, data)
   } catch (err) {
-    console.error('Error when rendering template at path:', path)
+    err.message = 'Error when rendering `' + path + '`: ' + err.message
     throw err
   }
 }
@@ -183,7 +183,7 @@ methods.$active = function(path: string, data?: Data): string {
   if (typeof path !== 'string') return ''
   if (typeof data.$path !== 'string') return ''
 
-  let relative = pt.relative(path, data.$path)
+  const relative = pt.relative(path, data.$path)
   if (relative[0] !== '.') return 'active'
   return ''
 }
@@ -216,7 +216,7 @@ methods.locals = function(path: string, data: Data): void {
   data.$ = data
 
   // Include the metadata associated with the current directory, if any.
-  let meta = this.metaAtPath(path)
+  const meta = this.metaAtPath(path)
   if (meta) data.$meta = meta
 
   /**
@@ -224,7 +224,7 @@ methods.locals = function(path: string, data: Data): void {
    * Note: these locals are intentionally allowed to "bleed through" to
    * ancestor templates during a Statil#renderThrough pass.
    */
-  let legend = this.fileLegend(path)
+  const legend = this.fileLegend(path)
   if (legend) _.assign(data, legend)
 }
 
@@ -233,7 +233,7 @@ methods.locals = function(path: string, data: Data): void {
  * expression in that directory's metadata, if any.
  */
 methods.isIgnored = function(path: string): boolean {
-  let meta = this.metaAtPath(path)
+  const meta = this.metaAtPath(path)
   if (!meta || !meta.ignore) return false
   statics.validateTruthyString(meta.ignore)
   return !!pt.basename(path).match(meta.ignore)
