@@ -31,8 +31,12 @@ function RESET () {
   result = expected = undefined
 }
 
+function merge () {
+  return _.reduce(arguments, _.merge, {})
+}
+
 /**
- * extend
+ * batch / locals.extend
  */
 
 RESET()
@@ -55,7 +59,7 @@ expected = `
 if (result.trim() !== expected.trim()) throw Error()
 
 /**
- * include
+ * batch / locals.include
  */
 
 RESET()
@@ -80,7 +84,7 @@ expected = `
 if (result.trim() !== expected.trim()) throw Error()
 
 /**
- * active / act
+ * locals.active / locals.act
  */
 
 RESET()
@@ -102,7 +106,7 @@ if (result.trim() !== expected.trim()) throw Error()
 
 RESET()
 
-result = dir('test/html', {ignorePaths: ['index.html']})
+result = dir('test/html', options)
 
 if ('index.html' in result) throw Error()
 
@@ -115,6 +119,52 @@ expected = `
 </nav>`
 
 if (result['partials/nav.html'].trim() !== expected.trim()) throw Error()
+
+/**
+ * options.rename
+ */
+
+RESET()
+
+result = batch(files, merge(options, {
+  rename: '$&/index.html',
+  renameExcept: ['extend.html']
+}))
+
+if (!('extend.html' in result)) throw Error()
+
+if (!('partials/nav/index.html' in result)) throw Error()
+
+RESET()
+
+result = batch(files, merge(options, {
+  rename: path => path + '/index.html'
+}))
+
+if (!('extend.html/index.html' in result)) throw Error()
+
+/**
+ * options.pipeline
+ */
+
+RESET()
+
+result = batch(files, merge(options, {
+  pipeline: [
+    (content, path) => {
+      if (path === 'partials/nav.html') return `${content}<h1>Epilogue</h1>`
+    }
+  ]
+}))['partials/nav.html']
+
+expected = `
+<nav>
+  <a href="/">index</a>
+  <a href="/include">include</a>
+</nav>
+<h1>Epilogue</h1>`
+
+if (result.trim() !== expected.trim()) throw Error()
 
 /**
  * Done

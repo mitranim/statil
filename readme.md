@@ -12,13 +12,15 @@ rebuild your site on-the-fly as you edit.
 ## TOC
 
 * [Description](#description)
+* [Motivation](#motivation)
 * [Installation](#installation)
 * [API](#api)
 * [Templating](#templating)
+* [CLI](#cli)
 
 ## Motivation
 
-Other site generators are effing bloated and don't integrate well with gulp.
+Other static generators are effing bloated and don't integrate well with gulp.
 
 If you're unfamiliar with the idea of a static site, it's a site pre-rendered
 from a bunch of templates into a collection of complete html pages. It can be
@@ -92,10 +94,22 @@ options.data
 // and returns false if the path should be ignored. Example:
 //   {ignorePaths: ['partials/index.html']}
 options.ignorePaths
+
+// If a string, it's passed as a second argument to `path.replace()`, using
+// normal JavaScript semantics. Paths included into `options.renameExcept` are
+// ignored. If a function, it's called with each path to generate a new path.
+options.rename
+
+// Array of paths to ignore in `options.rename`.
+options.renameExcept
+
+// Array of functions that get called with `(content, path)` when rendering
+// each template. This can be used for post-processing like markdown rendering.
+options.pipeline
 ```
 
-The options object is passed directly to lodash's `_.template`. Refer to its
-options documentation.
+Other options are passed directly to lodash's `_.template`. Refer to its
+documentation.
 
 ## Templating
 
@@ -153,4 +167,21 @@ Same as `active` but simply returns the string `'active'` or `''`.
 
 ```html
 <a href="/about" class="nav {{act('about')}}">about us</a>
+```
+
+## CLI
+
+statil comes with a self-documenting CLI. Example usage:
+
+```sh
+# local usage
+npm i statil
+$(npm bin)/statil -h
+
+# global usage
+npm i -g statil
+statil -h
+
+# compile directory
+statil --dir src/html --out dist
 ```
