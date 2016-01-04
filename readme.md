@@ -1,115 +1,156 @@
+[![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat)](http://standardjs.com)
+
 ## Description
 
-`statil` is the most lightweight static site generator you've ever seen. It's
-a wrapper around [lodash's templating](https://lodash.com/docs#template) to
-add hierarchical rendering and some useful utilities for use in templates.
+`statil` is a lightweight HTML generator for static sites. It's essentially a
+tiny wrapper around [lodash's templating](https://lodash.com/docs#template) that
+adds the ability to `include` and `extend` templates from other templates.
 
-It's best used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil) to
+Best used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil) to
 rebuild your site on-the-fly as you edit.
+
+## TOC
+
+* [Description](#description)
+* [Installation](#installation)
+* [API](#api)
+* [Templating](#templating)
 
 ## Motivation
 
-Most [static site generators](https://www.staticgen.com) are trying to be
-everything, do everything. They want to wash your face, walk your dog, and shag
-your wife. `statil` takes a directory of templates and spits out a bunch of
-compiled files. That's it. It wants to be just a tiny part of your build chain.
+Other site generators are effing bloated and don't integrate well with gulp.
 
-Another difference is that statil understands hierarchical templating. It
-assumes the `index` file (ignoring extensions) in each directory to be a layout
-that encloses its sibling templates and descendant templates in subdirectories.
-When rendering each file, statil automatically wraps it into its sibling `index`
-(if available) and each ancestral `index` (if available). Transclusion is done
-at the `<%= $content %>` directive. It's an implicit hierarchy that defines the
-route hierarchy of your site. You don't have to explicitly define layouts and
-blocks.
+If you're unfamiliar with the idea of a static site, it's a site pre-rendered
+from a bunch of templates into a collection of complete html pages. It can be
+served as static files behind a fast server like nginx or on a service like
+GitHub Pages. Great for stateless sites like repository documentation or a
+personal blog.
 
-### What's a Static Site?
+## Installation
 
-If you're unfamiliar with the idea, a static site is a site pre-rendered from a
-collection of partial templates into a collection of complete, isolated html
-pages. Then it may be served as static files on a service like GitHub Pages.
-It's great for stateless sites like repository documentation or personal pages.
+In a shell:
 
-## Installation and Usage
-
-Should be used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil).
-See its readme for an example.
-
-To run tests, clone the repo, `cd` to its directory, run `npm i`, and use:
-
-```shell
-npm test
+```sh
+npm i --save-dev statil
 ```
 
-To watch files and rerun tests when tinkering with the source, use:
+In a script:
 
-```shell
-npm run autotest
+```javascript
+const statil = require('statil')
 ```
 
-## Explanation
+## API
 
-Suppose you have a project structure like this:
+### `dir(dirname, options)`
 
+Takes a relative directory name, reads all files, and passes them to `batch`
+(see below). Returns a hashmap of paths and compiled files. Example:
+
+```javascript
+'use strict'
+
+const statil = require('../lib/statil')
+const fs = require('fs')
+const pt = require('path')
+
+const files = statil.dir('html', {ignorePaths: ['index.html']})
+
+mkdir('dist')
+
+// Write results to disk.
+for (const path in files) {
+  mkdir(pt.dirname(pt.join('dist', path)))
+  fs.writeFileSync(pt.join('dist', path), files[path], 'utf8')
+}
+
+function mkdir (path) {
+  path = path.split('/')
+  for (let i = 0; i++ < path.length;) {
+    const dir = path.slice(0, i).join('/')
+    try {
+      fs.accessSync(dir)
+    } catch (err) {
+      fs.mkdirSync(dir)
+    }
+  }
+}
 ```
-./ ═╦═ ...
-    ╚═ templates ═╦═ index.html
-                  ╠═ partials ═╦═ navbar.html
-                  ╠═ ...       ╚═ footer.html
-                  ╚═ stuff ═╦═ index.html
-                            ╠═ one.html
-                            ╠═ ...
-                            ╚═ ten.html
+
+### `batch(files, options)`
+
+Takes a hashmap of paths and file contents and an options object (see below).
+Returns a hashmap of paths and compiled results.
+
+### Options
+
+```javascript
+// Local data that will be available in templates.
+options.data
+
+// An array of paths to ignore or a function that tests individual paths
+// and returns false if the path should be ignored. Example:
+//   {ignorePaths: ['partials/index.html']}
+options.ignorePaths
 ```
 
-When you scan and render `templates` with statil, it expects:
-* `templates/index` to wrap every other template;
-* `templates/stuff/index` to wrap `one` and other templates in that directory
-  (and to be wrapped by `templates/index`);
-* ... ad infinitum.
+The options object is passed directly to lodash's `_.template`. Refer to its
+options documentation.
 
-In other words, when rendering any given template, the intent is to sequentially
-wrap it into each `index` file ancestral to it. Each `index` is a layout for its
-siblings (files in the same directory) and descendants (files in its sibling
-directories).
+## Templating
 
-Your `templates/index` might look like this:
+By default, statil uses Django-style delimiters. You can customise them by
+passing custom regexes (see lodash's template docs).
+
+The functions below are available in templates.
+
+### `extend(path, data)`
+
+Causes the current template to be wrapped by the template at the given path,
+passing any additional data. The compiled contents are available in the outer
+template as the variable `content`.
 
 ```html
-<!DOCTYPE html>
-<html>
-  <head>
-    <title><%= $title || 'my awesome site' %></title>
-  </head>
-  <body>
-    <%= $include('partials/navbar', $) %>
-    <%= $content || $include('partials/index', $) %>
-    <%= $include('partials/footer', $) %>
-  </body>
-</html>
+<!-- about.html -->
+
+{% extend('index.html', {title: 'about'}) %}
+
+<h1>about us</h1>
 ```
 
-Where `$include` explicitly chooses a file to import, and `$content` transcludes
-the descendant template that is currently being rendered.
+```html
+<!-- index.html -->
 
-Each call to `render` shares one mutable locals object between the templates
-that are being rendered. In combination with the depth-first approach, this lets
-you propagate meta information upwards to the root template, which is exploited
-by the built-in `$entitle` method and the `$title` meta string.
+{{content}}
+```
 
-## Metadata
+### `include(path, data)`
 
-statil supports additional metadata in YAML files (YAML is a superset of JSON,
-so this includes JSON). They're identified by extension: `(yaml|json)`.
+Renders the template at the given path, passing any additional data.
 
-Meta data is always associated with a directory, and each directory may have
-only one meta file.
+```html
+<article>
+  {{include('partials/header.html', {title: 'kitty pics'})}}
+</article>
+```
 
-A metadata file describes the current directory, and its `files:` key describes
-files in the directory. Each file's legend is assigned to the locals object
-passed to the template when rendering that file.
+### `active(path)`
 
-## ToDo / WIP
+Returns `class="active"` if the given path is within the path of the current
+template. Useful for active route indicators on anchors.
 
-Include a full API reference. Consider including better example templates with
-compiled versions, with an example script to compile them.
+The current path is available in templates as the variable `path`. Calls to
+`extend` and `include` don't affect it; a partial or outer template will be
+rendered several times with a different `path`.
+
+```html
+<a href="/about" {{active('about')}}>about us</a>
+```
+
+### `act(path)`
+
+Same as `active` but simply returns the string `'active'` or `''`.
+
+```html
+<a href="/about" class="nav {{act('about')}}">about us</a>
+```
