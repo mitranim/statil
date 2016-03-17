@@ -24,9 +24,9 @@ Other static generators are effing bloated and don't integrate well with gulp.
 
 If you're unfamiliar with the idea of a static site, it's a site pre-rendered
 from a bunch of templates into a collection of complete html pages. It can be
-served as static files behind a fast server like nginx or on a service like
-GitHub Pages. Great for stateless sites like repository documentation or a
-personal blog.
+served as static files by a fast server like nginx or a service like GitHub
+Pages. Great for stateless sites like repository documentation or a personal
+blog.
 
 ## Installation
 
@@ -44,10 +44,15 @@ const statil = require('statil')
 
 ## API
 
+### `batch(files, options)`
+
+Takes a map of paths to file contents and a map of options (see below). Returns
+a map of paths to compiled results.
+
 ### `dir(dirname, options)`
 
-Takes a relative directory name, reads all files, and passes them to `batch`
-(see below). Returns a hashmap of paths and compiled files. Example:
+Takes a relative directory name, reads all files, and returns a map of paths to
+compiled files. Uses `batch` internally. Example:
 
 ```javascript
 'use strict'
@@ -79,44 +84,45 @@ function mkdir (path) {
 }
 ```
 
-### `batch(files, options)`
-
-Takes a hashmap of paths and file contents and an options object (see below).
-Returns a hashmap of paths and compiled results.
-
 ### Options
 
-```javascript
-// Local data that will be available in templates.
-options.data
+```sh
+data :: any
 
-// An array of paths to ignore or a function that tests individual paths
-// and returns false if the path should be ignored. Example:
-//   {ignorePaths: ['partials/index.html']}
-options.ignorePaths
+  Local data that will be available in templates.
 
-// If a string, it's passed as a second argument to `path.replace()`, using
-// normal JavaScript semantics. Paths included into `options.renameExcept` are
-// ignored. If a function, it's called with each path to generate a new path.
-options.rename
+ignorePaths :: [string] | (string -> boolean)
 
-// Array of paths to ignore in `options.rename`.
-options.renameExcept
+  A list of paths to ignore or a function that filters paths. Example:
 
-// Array of functions that get called with `(content, path)` when rendering
-// each template. This can be used for post-processing like markdown rendering.
-options.pipeline
+    ['partials/index.html']
+
+rename :: string | (string -> string)
+
+  If a string, it's passed as a second argument to `path.replace()` (built-in
+  `String.prototype.replace`). Renaming ignores paths included into
+  `options.renameExcept`. If a function, it's used to transform each path.
+
+renameExcept :: [string]
+
+  List of paths to ignore in `options.rename`.
+
+pipeline :: [((string, string) -> string)]
+
+  List of functions that get called with `(content, path)` when rendering
+  each template, receiving each other's result as first argument. This can be
+  used for post-processing like markdown rendering.
 ```
 
 Other options are passed directly to lodash's `_.template`. Refer to its
-documentation.
+<a href="https://lodash.com/docs#template" target="_blank">documentation</a>.
 
 ## Templating
 
 By default, statil uses Django-style delimiters. You can customise them by
 passing custom regexes (see lodash's template docs).
 
-The functions below are available in templates.
+Statil makes the functions listed below available in templates.
 
 ### `extend(path, data)`
 
