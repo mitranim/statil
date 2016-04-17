@@ -173,5 +173,5 @@ if (result.trim() !== expected.trim()) throw Error()
 console.log(`[${pad(new Date().getHours())}:${pad(new Date().getMinutes())}:${pad(new Date().getSeconds())}] Finished test without errors.`)
 
 function pad (val) {
-  return _.padLeft(val, 2, '0')
+  return _.padStart(val, 2, '0')
 }

@@ -1,6 +1,6 @@
 {
   "name": "statil",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Lightweight HTML generator",
   "main": "lib/statil",
   "bin": {
@@ -24,8 +24,8 @@
     "url": "https://github.com/Mitranim/statil.git"
   },
   "dependencies": {
-    "glob": "^6.0.3",
-    "lodash": "^3.10.1",
-    "yargs": "^3.31.0"
+    "glob": "^7.0.3",
+    "lodash": "^4.11.1",
+    "yargs": "^4.6.0"
   }
 }
