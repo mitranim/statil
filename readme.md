@@ -2,9 +2,9 @@
 
 ## Description
 
-`statil` is a lightweight HTML generator for static sites. It's essentially a
+Statil is a lightweight HTML generator for static sites. It's essentially a
 tiny wrapper around [lodash's templating](https://lodash.com/docs#template) that
-adds the ability to `include` and `extend` templates from other templates.
+processes templates as a group where they can include and extend each other.
 
 Best used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil) to
 rebuild your site on-the-fly as you edit.
@@ -20,13 +20,14 @@ rebuild your site on-the-fly as you edit.
 
 ## Motivation
 
-Other static generators are effing bloated and don't integrate well with gulp.
+Most static generators are bloated frameworks that run as their own process and
+don't integrate with anything else. I want a generator that is also a JS
+_library_ that can be integrated into a Gulp build.
 
 If you're unfamiliar with the idea of a static site, it's a site pre-rendered
-from a bunch of templates into a collection of complete html pages. It can be
-served as static files by a fast server like nginx or a service like GitHub
-Pages. Great for stateless sites like repository documentation or a personal
-blog.
+from a bunch of templates into a collection of complete HTML pages. It can be
+served by a fast static server like nginx or a service like GitHub Pages. Great
+for stateless sites like repository documentation or a personal blog.
 
 ## Installation
 
@@ -44,15 +45,39 @@ const statil = require('statil')
 
 ## API
 
-### `batch(files, options)`
+### `renderBatch(files, options)`
 
-Takes a map of paths to file contents and a map of options (see below). Returns
-a map of paths to compiled results.
+Takes a dict where keys are paths and values are template strings. In addition,
+accepts options (see below). Returns a dict where paths are mapped to rendered
+results.
 
-### `dir(dirname, options)`
+```js
+'use strict'
 
-Takes a relative directory name, reads all files, and returns a map of paths to
-compiled files. Uses `batch` internally. Example:
+const {renderBatch} = require('statil')
+
+const input = {
+  'index.html': `{{include('partials/header.html')}}<div>{{title}}</div>`,
+  'about.html': `{{extend('index.html', {title: 'About'})}}`,
+  'partials/header.html': `<div>Mock</div>`,
+}
+
+const options = {
+  ignorePath: path => path === 'index.html' || /^partials/.test(path),
+}
+
+renderBatch(input, options)
+// {'about.html': '<div>Mock</div><div>About</div>'}
+```
+
+### `renderDir(dirname, options)`
+
+Takes a directory name (relative to `process.cwd()`), reads all files from it,
+and returns a dict of file paths mapped to rendered results. Uses `renderBatch`
+internally. It reads files _synchronously_, blocking the entire Node VM, so this
+should only be used for simple and dirty build scripts.
+
+Example:
 
 ```javascript
 'use strict'
@@ -60,58 +85,71 @@ compiled files. Uses `batch` internally. Example:
 const statil = require('../lib/statil')
 const fs = require('fs')
 const pt = require('path')
+const mkdirp = require('mkdirp')
 
-const files = statil.dir('html', {ignorePaths: ['index.html']})
+// This is where rendering happens
+const files = statil.renderDir('html', {ignorePath: path => path === 'index.html'})
 
-mkdir('dist')
-
-// Write results to disk.
+// This is where we write results to disk
+mkdirp.sync('dist')
 for (const path in files) {
-  mkdir(pt.dirname(pt.join('dist', path)))
+  mkdirp.sync(pt.dirname(pt.join('dist', path)))
   fs.writeFileSync(pt.join('dist', path), files[path], 'utf8')
-}
-
-function mkdir (path) {
-  path = path.split('/')
-  for (let i = 0; i++ < path.length;) {
-    const dir = path.slice(0, i).join('/')
-    try {
-      fs.accessSync(dir)
-    } catch (err) {
-      fs.mkdirSync(dir)
-    }
-  }
 }
 ```
 
 ### Options
 
 ```sh
-data :: any
+ignorePath :: ƒ(path :: string, parsed :: dict) -> boolean
 
-  Local data that will be available in templates.
+  (Optional)
 
-ignorePaths :: [string] | (string -> boolean)
+  Called for each file. May exclude the file from rendering by returning `true`.
+  The file will still be available for `include` and `extend` in other templates.
+  The second argument is provided via `require('path').parse(path)`.
 
-  A list of paths to ignore or a function that filters paths. Example:
+  Example:
 
-    ['partials/index.html']
+    const options = {ignorePath: path => /^partials/.test(path)}
 
-rename :: string | (string -> string)
+renamePath :: ƒ(path :: string, parsed :: dict) -> string
 
-  If a string, it's passed as a second argument to `path.replace()` (built-in
-  `String.prototype.replace`). Renaming ignores paths included into
-  `options.renameExcept`. If a function, it's used to transform each path.
+  (Optional)
 
-renameExcept :: [string]
+  Called for each file after rendering to modify its path. Convenient when you
+  want to convert individual HTML templates to "folders" by appending 'index.html'.
+  The second argument is provided via `require('path').parse(path)`.
 
-  List of paths to ignore in `options.rename`.
+  Example:
 
-pipeline :: [((string, string) -> string)]
+    const pt = require('path')
 
-  List of functions that get called with `(content, path)` when rendering
-  each template, receiving each other's result as first argument. This can be
-  used for post-processing like markdown rendering.
+    const options = {
+      renamePath: (path, {dir, base, name}) => (
+        base === 'index.html'
+        ? path
+        : pt.join(dir, name, 'index.html')
+      )
+    }
+
+postProcess :: ƒ(content :: string, path :: string, parsed :: dict) -> string
+
+  (Optional)
+
+  Called for each file after rendering. Gets a chance to modify the result.
+  Receives the rendered content, the raw template path, and its parsed version
+  via `require('path).parse(path)`. Returns the new content.
+
+  Example of using `postProcess` for markdown:
+
+    const options = {
+      postProcess: (content, path, {ext}) => (
+        ext === '.md'
+        ? marked(content)
+        : content
+      )
+    }
 ```
 
 Other options are passed directly to lodash's `_.template`. Refer to its
@@ -119,16 +157,16 @@ Other options are passed directly to lodash's `_.template`. Refer to its
 
 ## Templating
 
-By default, statil uses Django-style delimiters. You can customise them by
+By default, Statil uses Django-style delimiters. You can customise them by
 passing custom regexes (see lodash's template docs).
 
 Statil makes the functions listed below available in templates.
 
-### `extend(path, data)`
+### `extend(path, locals)`
 
 Causes the current template to be wrapped by the template at the given path,
-passing any additional data. The compiled contents are available in the outer
-template as the variable `content`.
+making `locals` available in that template's scope. The compiled contents are
+available in the outer template as the variable `content`.
 
 ```html
 <!-- about.html -->
@@ -144,9 +182,10 @@ template as the variable `content`.
 {{content}}
 ```
 
-### `include(path, data)`
+### `include(path, locals)`
 
-Renders the template at the given path, passing any additional data.
+Renders the template at the given path, making `locals` available in that
+template's scope.
 
 ```html
 <article>
@@ -177,7 +216,7 @@ Same as `active` but simply returns the string `'active'` or `''`.
 
 ## CLI
 
-statil comes with a self-documenting CLI. Example usage:
+Statil comes with a self-documenting CLI. Example usage:
 
 ```sh
 # local usage

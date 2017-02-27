@@ -1,7 +1,7 @@
 {
   "name": "statil",
-  "version": "0.4.0",
-  "description": "Lightweight HTML generator",
+  "version": "0.5.0",
+  "description": "Lightweight templating library and static site generator",
   "main": "lib/statil",
   "bin": {
     "statil": "bin/statil"
@@ -27,5 +27,9 @@
     "glob": "^7.0.3",
     "lodash": "^4.11.1",
     "yargs": "^4.6.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "7.1.1",
+    "eslint_d": "4.2.1"
   }
 }

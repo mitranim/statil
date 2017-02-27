@@ -4,28 +4,31 @@
  * Dependencies
  */
 
-const fs = require('fs')
-const pt = require('path')
-const glob = require('glob')
 const _ = require('lodash')
-const batch = require('../lib/statil').batch
-const dir = require('../lib/statil').dir
+const fs = require('fs')
+const glob = require('glob')
+const pt = require('path')
+const {renderBatch, renderDir} = require('../lib/statil')
 
 /**
  * Globals
  */
 
-let paths = glob.sync(pt.join(__dirname, 'html') + '/**/*', {nodir: true})
+const testHtmlDir = pt.join(__dirname, 'html') + '/'
 
-paths = _.mapKeys(paths, path => (
-  path.replace(pt.join(__dirname, 'html') + '/', '')
-))
+const paths = _.mapKeys(
+  glob.sync(pt.join(__dirname, 'html') + '/**/*', {nodir: true}),
+  path => path.replace(testHtmlDir, '')
+)
 
 const files = _.mapValues(paths, path => fs.readFileSync(path, 'utf8'))
 
-const options = {ignorePaths: ['index.html']}
+const options = {
+  ignorePath: path => path === 'index.html',
+}
 
-let result, expected
+let result
+let expected
 
 function RESET () {
   result = expected = undefined
@@ -36,12 +39,12 @@ function merge () {
 }
 
 /**
- * batch / locals.extend
+ * renderBatch / locals.extend
  */
 
 RESET()
 
-result = batch(files, options)['extend.html']
+result = renderBatch(files, options)
 
 expected = `
 <!doctype html>
@@ -56,15 +59,15 @@ expected = `
 </body>
 </html>`
 
-if (result.trim() !== expected.trim()) throw Error()
+if (result['extend.html'].trim() !== expected.trim()) throw Error()
 
 /**
- * batch / locals.include
+ * renderBatch / locals.include
  */
 
 RESET()
 
-result = batch(files, options)['include.html']
+result = renderBatch(files, options)
 
 expected = `
 <!doctype html>
@@ -81,7 +84,7 @@ expected = `
 </body>
 </html>`
 
-if (result.trim() !== expected.trim()) throw Error()
+if (result['include.html'].trim() !== expected.trim()) throw Error()
 
 /**
  * locals.active / locals.act
@@ -89,7 +92,7 @@ if (result.trim() !== expected.trim()) throw Error()
 
 RESET()
 
-result = batch(files, options)['partials/nav-active.html']
+result = renderBatch(files, options)
 
 expected = `
 <nav>
@@ -98,15 +101,15 @@ expected = `
   <a href="/include" class="active">include</a>
 </nav>`
 
-if (result.trim() !== expected.trim()) throw Error()
+if (result['partials/nav-active.html'].trim() !== expected.trim()) throw Error()
 
 /**
- * dir
+ * renderDir / options.ignorePath
  */
 
 RESET()
 
-result = dir('test/html', options)
+result = renderDir('test/html', options)
 
 if ('index.html' in result) throw Error()
 
@@ -121,41 +124,44 @@ expected = `
 if (result['partials/nav.html'].trim() !== expected.trim()) throw Error()
 
 /**
- * options.rename
+ * options.renamePath
  */
 
 RESET()
 
-result = batch(files, merge(options, {
-  rename: '$&/index.html',
-  renameExcept: ['extend.html']
+result = renderBatch(files, merge(options, {
+  renamePath: path => `${path}/index.html`,
+}))
+
+if (!('extend.html/index.html' in result)) throw Error()
+
+RESET()
+
+result = renderBatch(files, merge(options, {
+  renamePath: (path, {dir, name}) => (
+    path === 'extend.html'
+    ? path
+    : `${dir}/${name}/index.html`
+  ),
 }))
 
 if (!('extend.html' in result)) throw Error()
 
 if (!('partials/nav/index.html' in result)) throw Error()
 
-RESET()
-
-result = batch(files, merge(options, {
-  rename: path => path + '/index.html'
-}))
-
-if (!('extend.html/index.html' in result)) throw Error()
-
 /**
- * options.pipeline
+ * options.postProcess
  */
 
 RESET()
 
-result = batch(files, merge(options, {
-  pipeline: [
-    (content, path) => {
-      if (path === 'partials/nav.html') return `${content}<h1>Epilogue</h1>`
-    }
-  ]
-}))['partials/nav.html']
+result = renderBatch(files, merge(options, {
+  postProcess: (content, path, _parsed) => (
+    path === 'partials/nav.html'
+    ? `${content}<h1>Epilogue</h1>`
+    : content
+  )
+}))
 
 expected = `
 <nav>
@@ -164,13 +170,13 @@ expected = `
 </nav>
 <h1>Epilogue</h1>`
 
-if (result.trim() !== expected.trim()) throw Error()
+if (result['partials/nav.html'].trim() !== expected.trim()) throw Error()
 
 /**
  * Done
  */
 
-console.log(`[${pad(new Date().getHours())}:${pad(new Date().getMinutes())}:${pad(new Date().getSeconds())}] Finished test without errors.`)
+console.log(`[${pad(new Date().getHours())}:${pad(new Date().getMinutes())}:${pad(new Date().getSeconds())}] Finished test without errors.`)  // eslint-disable-line
 
 function pad (val) {
   return _.padStart(val, 2, '0')
