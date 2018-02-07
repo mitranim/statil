@@ -2,8 +2,9 @@
   "parser": "babel-eslint",
   "extends": "eslint:recommended",
   "env": {
-    "browser": true,
-    "node": true
+    "browser": false,
+    "node": true,
+    "es6": true
   },
   "rules": {
     "comma-dangle": "off",
@@ -13,7 +14,7 @@
     "dot-notation": ["error", {"allowKeywords": true}],
     "eqeqeq": ["error", "allow-null"],
     "indent": ["error", 2, {"SwitchCase": 1}],
-    "max-len": ["error", 100],
+    "max-len": ["error", 120],
     "no-cond-assign": "error",
     "no-console": "off",
     "no-empty": "off",
@@ -21,7 +22,7 @@
     "no-extra-semi": "error",
     "no-func-assign": "error",
     "no-inner-declarations": ["error", "both"],
-    "no-loop-func": "error",
+    // "no-loop-func": "error",
     "no-mixed-spaces-and-tabs": "error",
     "no-restricted-globals": ["error",
       // window (browser)

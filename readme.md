@@ -1,231 +1,235 @@
-[![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat)](http://standardjs.com)
-
 ## Description
 
-Statil is a lightweight HTML generator for static sites. It's essentially a
-tiny wrapper around [lodash's templating](https://lodash.com/docs#template) that
-processes templates as a group where they can include and extend each other.
+Statil is a templating utility for static websites, intended to be used inside a Node.js script or a build system. Simplistic and low-level. Supports YAML [front matter](https://jekyllrb.com/docs/frontmatter/), like Jekyll.
 
-Best used with [`gulp-statil`](https://github.com/Mitranim/gulp-statil) to
-rebuild your site on-the-fly as you edit.
+If you're unfamiliar with the idea of a static site, it's a site pre-rendered from a bunch of templates into a collection of complete HTML pages. It can be served by a fast static server like nginx or a service like GitHub Pages. Great for stateless sites like repository documentation or a personal blog.
+
+For use with `gulp`, see [`gulp-statil`](https://github.com/Mitranim/gulp-statil).
 
 ## TOC
 
 * [Description](#description)
-* [Motivation](#motivation)
+* [Why](#why)
 * [Installation](#installation)
-* [API](#api)
-* [Templating](#templating)
+* [Usage](#usage)
 * [CLI](#cli)
 
-## Motivation
+## Why
 
-Most static generators are bloated frameworks that run as their own process and
-don't integrate with anything else. I want a generator that is also a JS
-_library_ that can be integrated into a Gulp build.
-
-If you're unfamiliar with the idea of a static site, it's a site pre-rendered
-from a bunch of templates into a collection of complete HTML pages. It can be
-served by a fast static server like nginx or a service like GitHub Pages. Great
-for stateless sites like repository documentation or a personal blog.
+Static site generators tend to be needlessly complex. I just want something simple and low-level for my build system.
 
 ## Installation
 
-In a shell:
-
 ```sh
-npm i --save-dev statil
+npm i statil
 ```
 
-In a script:
+## Usage
 
-```javascript
-const statil = require('statil')
+(For CLI, see [below](#cli).)
+
+The core Statil functions are pure and free from IO.
+
+```js
+const {createSettings, renderSettings} = require('statil')
+
+const templates = {
+  'index.html': '...',
+  'partials/head.html': '...',
+}
+
+const settings = createSettings(templates, {})
+const output = renderSettings(settings)
+
+// Output has the same structure as input:
+const _output = {
+  'index.html': '...',
+  'partials/head.html': '...',
+}
+```
+
+Statil also provides IO functions for self-contained build scripts:
+
+```js
+const {createSettings, renderSettings} = require('statil')
+const {readFiles, writeFiles} = require('statil/lib/fs-utils')
+
+void async function() {
+  const files = await readFiles('./html')
+  const settings = createSettings(files, {})
+  const output = renderSettings(settings)
+  await writeFiles('./dist', output)
+}().catch(err => console.error(err))
 ```
 
 ## API
 
-### `renderBatch(files, options)`
+### `createSettings(templates, options)`
 
-Takes a dict where keys are paths and values are template strings. In addition,
-accepts options (see below). Returns a dict where paths are mapped to rendered
-results.
+Creates an intermediary structure for `renderSettings`. The resulting `Settings` contain the original options, as well as the parsed templates with the additional metadata from the [front matter](https://jekyllrb.com/docs/frontmatter/). See the structure below.
+
+The templates must have the following structure:
 
 ```js
-'use strict'
-
-const {renderBatch} = require('statil')
-
-const input = {
-  'index.html': `{{include('partials/header.html')}}<div>{{title}}</div>`,
-  'about.html': `{{extend('index.html', {title: 'About'})}}`,
-  'partials/header.html': `<div>Mock</div>`,
+const templates = {
+  '<path>': '<content>',
 }
 
+const example = {
+  'index.html': '<div>Hello world!</div>'
+  'partials/head.html': '<!doctype html><title>{{$.title}}</title>',
+}
+```
+
+The options may have the following structure; all fields are optional:
+
+```js
+interface Options {
+  // Determines interpolation delimiters, default {{ }}
+  reExpression: RegExp
+
+  // Determines statement delimiters, default << >>
+  reStatement: RegExp
+
+  // Determines the name of the context object, default $
+  contextName: string
+
+  // Data to be made available in all templates
+  context: {[string]: any}
+}
+```
+
+Settings have the following structure:
+
+```js
+interface Settings {
+  ...options
+  context: {
+    ...options.context
+    templates: {[string]: string}
+    entries: {[string]: Entry}
+    tree: EntryTree
+    render: function
+  }
+}
+
+interface Entry {
+  path: string
+  content: string
+  template: function  // created lazily when rendering
+  ...
+}
+
+interface EntryTree {
+  [string]: Entry | EntryTree
+}
+```
+
+To include templates into each other, use `settings.context.render`:
+
+```js
+const templates = {
+  main: '{{$.render($.tree.partial, $)}}'
+  partial: '...',
+}
+```
+
+`settings.context.tree` contains parsed entries as a hierarchy that matches the folder structure. It's a convenient way for templates to refer to each other:
+
+```js
+const templates = {
+  main: '{{$.render($.tree.partial, {msg: "hello"})}}',
+  partial: '{{$.msg}}',
+}
+```
+
+To change the delimiters used for JS evaluation, specify `reExpression` and/or `reStatement`:
+
+```js
 const options = {
-  ignorePath: path => path === 'index.html' || /^partials/.test(path),
-}
-
-renderBatch(input, options)
-// {'about.html': '<div>Mock</div><div>About</div>'}
-```
-
-### `renderDir(dirname, options)`
-
-Takes a directory name (relative to `process.cwd()`), reads all files from it,
-and returns a dict of file paths mapped to rendered results. Uses `renderBatch`
-internally. It reads files _synchronously_, blocking the entire Node VM, so this
-should only be used for simple and dirty build scripts.
-
-Example:
-
-```javascript
-'use strict'
-
-const statil = require('../lib/statil')
-const fs = require('fs')
-const pt = require('path')
-const mkdirp = require('mkdirp')
-
-// This is where rendering happens
-const files = statil.renderDir('html', {ignorePath: path => path === 'index.html'})
-
-// This is where we write results to disk
-mkdirp.sync('dist')
-for (const path in files) {
-  mkdirp.sync(pt.dirname(pt.join('dist', path)))
-  fs.writeFileSync(pt.join('dist', path), files[path], 'utf8')
+  reExpression: /{{\s*([\s\S]+?)\s*}}/g,
+  reStatement: /<<\s*([\s\S]+?)\s*>>/g,
 }
 ```
 
-### Options
+By default, the context object in templates is named `$`. To change it, specify `contextName`:
 
-```sh
-ignorePath :: ƒ(path :: string, parsed :: dict) -> boolean
-
-  (Optional)
-
-  Called for each file. May exclude the file from rendering by returning `true`.
-  The file will still be available for `include` and `extend` in other templates.
-  The second argument is provided via `require('path').parse(path)`.
-
-  Example:
-
-    const options = {ignorePath: path => /^partials/.test(path)}
-
-renamePath :: ƒ(path :: string, parsed :: dict) -> string
-
-  (Optional)
-
-  Called for each file after rendering to modify its path. Convenient when you
-  want to convert individual HTML templates to "folders" by appending 'index.html'.
-  The second argument is provided via `require('path').parse(path)`.
-
-  Example:
-
-    const pt = require('path')
-
-    const options = {
-      renamePath: (path, {dir, base, name}) => (
-        base === 'index.html'
-        ? path
-        : pt.join(dir, name, 'index.html')
-      )
-    }
-
-postProcess :: ƒ(content :: string, path :: string, parsed :: dict) -> string
-
-  (Optional)
-
-  Called for each file after rendering. Gets a chance to modify the result.
-  Receives the rendered content, the raw template path, and its parsed version
-  via `require('path).parse(path)`. Returns the new content.
-
-  Example of using `postProcess` for markdown:
-
-    const options = {
-      postProcess: (content, path, {ext}) => (
-        ext === '.md'
-        ? marked(content)
-        : content
-      )
-    }
+```js
+const options = {
+  contextName: 'ctx',
+}
 ```
 
-Other options are passed directly to lodash's `_.template`. Refer to its
-<a href="https://lodash.com/docs#template" target="_blank">documentation</a>.
+Pass a `context` to make additional data or functions available in all templates:
 
-## Templating
+```js
+const options = {
+  md: require('marked'),
+}
 
-By default, Statil uses Django-style delimiters. You can customise them by
-passing custom regexes (see lodash's template docs).
-
-Statil makes the functions listed below available in templates.
-
-### `extend(path, locals)`
-
-Causes the current template to be wrapped by the template at the given path,
-making `locals` available in that template's scope. The compiled contents are
-available in the outer template as the variable `content`.
-
-```html
-<!-- about.html -->
-
-{% extend('index.html', {title: 'about'}) %}
-
-<h1>about us</h1>
+const templates = {
+  'hello.md': '_Hello world!_',
+  'index.html': '{{$.md($.render($.tree.partials["hello.md"]))}}',
+}
 ```
 
-```html
-<!-- index.html -->
+### `renderSettings(settings)`
 
-{{content}}
+Takes settings acquired from `createSettings` and renders `settings.context.entries` into static results. The output has the same shape as the templates passed to `createSettings`.
+
+```js
+const templates = {
+  main: '{{$.render($.tree.partial, {msg: "hello"})}}',
+  partial: '{{$.msg}}',
+}
+
+const settings = createSettings(templates)
+
+const {context: {entries}} = settings
+
+for (const path in entries) {
+  if (/^partial/.test(path)) delete entries[path]
+}
+
+const output = renderSettings(settings)
+
+const _output = {
+  main: 'hello',
+}
 ```
 
-### `include(path, locals)`
+To skip templates, modify `settings.context.entries` before calling `renderSettings`:
 
-Renders the template at the given path, making `locals` available in that
-template's scope.
-
-```html
-<article>
-  {{include('partials/header.html', {title: 'kitty pics'})}}
-</article>
+```js
+const {context: {entries}} = settings
+for (const path in entries) {
+  if (/^partials/.test(path)) delete entries[path]
+}
 ```
 
-### `active(path)`
+To rename files, modify the keys in the output, or rename the paths when passing them to whatever you use for IO.
 
-Returns `class="active"` if the given path is within the path of the current
-template. Useful for active route indicators on anchors.
-
-The current path is available in templates as the variable `path`. Calls to
-`extend` and `include` don't affect it; a partial or outer template will be
-rendered several times with a different `path`.
-
-```html
-<a href="/about" {{active('about')}}>about us</a>
-```
-
-### `act(path)`
-
-Same as `active` but simply returns the string `'active'` or `''`.
-
-```html
-<a href="/about" class="nav {{act('about')}}">about us</a>
+```js
+for (const path in output) {
+  if (/\.md$/.test(path)) {
+    output[path.replace(/\.md$/, '.html')] = output[path]
+    delete output[path]
+  }
+}
 ```
 
 ## CLI
 
-Statil comes with a self-documenting CLI. Example usage:
+Statil comes with a barebones CLI. Example usage:
 
 ```sh
 # local usage
 npm i statil
-$(npm bin)/statil -h
+$(npm bin)/statil --help
 
 # global usage
 npm i -g statil
-statil -h
+statil --help
 
 # compile directory
 statil --dir src/html --out dist

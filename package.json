@@ -1,15 +1,10 @@
 {
   "name": "statil",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Lightweight templating library and static site generator",
   "main": "lib/statil",
   "bin": {
     "statil": "bin/statil"
-  },
-  "scripts": {
-    "start": "node test/test && node watch",
-    "test": "node test/test",
-    "prepublish": "node test/test"
   },
   "author": "Mitranim",
   "license": "MIT",
@@ -24,12 +19,12 @@
     "url": "https://github.com/Mitranim/statil.git"
   },
   "dependencies": {
-    "glob": "^7.0.3",
-    "lodash": "^4.11.1",
-    "yargs": "^4.6.0"
+    "front-matter": "^2.3.0",
+    "glob": "^7.1.2",
+    "minimist": "^1.2.0"
   },
   "devDependencies": {
-    "babel-eslint": "7.1.1",
-    "eslint_d": "4.2.1"
+    "babel-eslint": "^8.2.1",
+    "eslint_d": "4.2.5"
   }
 }
