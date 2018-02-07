@@ -164,7 +164,9 @@ Pass a `context` to make additional data or functions available in all templates
 
 ```js
 const options = {
-  md: require('marked'),
+  context: {
+    md: require('marked'),
+  },
 }
 
 const templates = {
