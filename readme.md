@@ -1,6 +1,6 @@
 ## Description
 
-Statil is a templating utility for static websites, intended to be used inside a Node.js script or a build system. Simplistic and low-level. Supports YAML [front matter](https://github.com/jxson/front-matter), like Jekyll.
+Templating utility for static websites, intended for a Node.js script or build system. Simplistic and low-level. Supports YAML [front matter](https://github.com/jxson/front-matter), like Jekyll. Uses JavaScript for template scripting.
 
 If you're unfamiliar with the idea of a static site, it's a site pre-rendered from a bunch of templates into a collection of complete HTML pages. It can be served by a fast static server like nginx or a service like GitHub Pages. Great for stateless sites like repository documentation or a personal blog.
 
@@ -16,7 +16,7 @@ For use with `gulp`, see [`gulp-statil`](https://github.com/Mitranim/gulp-statil
 
 ## Why
 
-Static site generators tend to be needlessly complex. I just want something simple and low-level for my build system.
+Static site generators tend to be needlessly complex. I just want something simple and low-level.
 
 ## Installation
 
@@ -330,5 +330,5 @@ npm i -g statil
 statil --help
 
 # compile directory
-statil --dir src/html --out dist
+statil --src src/html --out dist
 ```
