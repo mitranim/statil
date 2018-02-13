@@ -1,6 +1,6 @@
 {
   "name": "statil",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Lightweight templating library and static site generator",
   "main": "lib/statil",
   "bin": {

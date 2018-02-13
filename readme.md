@@ -1,6 +1,6 @@
 ## Description
 
-Statil is a templating utility for static websites, intended to be used inside a Node.js script or a build system. Simplistic and low-level. Supports YAML [front matter](https://jekyllrb.com/docs/frontmatter/), like Jekyll.
+Statil is a templating utility for static websites, intended to be used inside a Node.js script or a build system. Simplistic and low-level. Supports YAML [front matter](https://github.com/jxson/front-matter), like Jekyll.
 
 If you're unfamiliar with the idea of a static site, it's a site pre-rendered from a bunch of templates into a collection of complete HTML pages. It can be served by a fast static server like nginx or a service like GitHub Pages. Great for stateless sites like repository documentation or a personal blog.
 
@@ -26,7 +26,94 @@ npm i statil
 
 ## Usage
 
-(For CLI, see [below](#cli).)
+Things to understand: (1) [templates](#templates); (2) [API](#api).
+
+### Templates
+
+Templates are strings with the following structure:
+
+```
+---
+(optional metadata in YAML format)
+---
+
+(body)
+```
+
+In [`createSettings`](#createsettingstemplates-options), each template is parsed into an entry with its `path`, the YAML front matter, and the remaining `body`. The body is converted to JS code during rendering.
+
+Template bodies may include arbitrary JS code like so:
+
+```
+---
+title: Home
+---
+
+<!-- expression -->
+<span>{{$.title.toLowerCase()}}</span>
+
+<!-- statements -->
+<< const {path, title} = $ >>
+<< console.log(title) >>
+
+<!-- conditionals just work -->
+<< if (true) { >>
+  <div>one</div>
+<< } else { >>
+  <div>other</div>
+<< } >>
+
+<!-- loops just work -->
+<< for (const i of [10, 20, 30]) { >>
+  <span>{{i}}</span>
+<< } >>
+```
+
+The `<< >>` and `{{ }}` delimiters are configurable.
+
+Templates are executed with one argument, the data context, by default called `$`. It contains the base context from [`createSettings`](#createsettingstemplates-options), the bonus data included by Statil, and the template's local data:
+
+```
+<< console.info($) >>
+```
+
+To render and include another template, call `$.render`, passing a parsed entry from `$.tree` and a data context:
+
+```
+<!-- Partial context -->
+{{$.render($.tree.partials['head.html'], {title: 'Home'})}}
+
+<!-- Full context -->
+{{$.render($.tree.partials['head.html'], $)}}
+```
+
+Statil doesn't support "include me" relations where a template asks to be included into an outer layout. Instead, define head/foot partials and include them on each page like so:
+
+```html
+<!-- partials/head.html -->
+
+<!doctype html>
+<title>{{$.title || 'Home'}}</title>
+<link rel="stylesheet" type="text/css" href="styles/main.css">
+```
+
+```html
+<!-- partials/foot.html -->
+
+<script src="scripts/main.js"></script>
+```
+
+```html
+<!-- index.html -->
+
+{{$.render($.tree.partials['head.html'], $)}}
+
+<div>Hello world!</div>
+
+{{$.render($.tree.partials['foot.html'], $)}}
+```
+
+### API
 
 The core Statil functions are pure and free from IO.
 
@@ -51,22 +138,30 @@ const _output = {
 Statil also provides IO functions for self-contained build scripts:
 
 ```js
+'use strict'
+
 const {createSettings, renderSettings} = require('statil')
 const {readFiles, writeFiles} = require('statil/lib/fs-utils')
 
-void async function() {
-  const files = await readFiles('./html')
-  const settings = createSettings(files, {})
-  const output = renderSettings(settings)
-  await writeFiles('./dist', output)
-}().catch(err => console.error(err))
+void async function main() {
+  try {
+    const files = await readFiles('./html')
+    const settings = createSettings(files, {})
+    const output = renderSettings(settings)
+    await writeFiles('./dist', output)
+  }
+  catch (err) {
+    console.error(err)
+    process.exit(1)
+  }
+}()
 ```
 
-## API
+### API
 
-### `createSettings(templates, options)`
+#### `createSettings(templates, options)`
 
-Creates an intermediary structure for `renderSettings`. The resulting `Settings` contain the original options, as well as the parsed templates with the additional metadata from the [front matter](https://jekyllrb.com/docs/frontmatter/). See the structure below.
+Creates an intermediary structure for [`renderSettings`](#rendersettingssettings). The resulting `Settings` contain the original options, as well as the parsed templates with the additional metadata from the [front matter](https://github.com/jxson/front-matter). See the structure below.
 
 The templates must have the following structure:
 
@@ -114,9 +209,10 @@ interface Settings {
 }
 
 interface Entry {
+  template: string
+  compiledTemplate: function  // created lazily when rendering
   path: string
-  content: string
-  template: function  // created lazily when rendering
+  body: string
   ...
 }
 
@@ -138,8 +234,8 @@ const templates = {
 
 ```js
 const templates = {
-  main: '{{$.render($.tree.partial, {msg: "hello"})}}',
-  partial: '{{$.msg}}',
+  'index.html': '{{$.render($.tree.partials.message, {msg: "hello"})}}',
+  'partials/message': '{{$.msg}}',
 }
 ```
 
@@ -160,7 +256,7 @@ const options = {
 }
 ```
 
-Pass a `context` to make additional data or functions available in all templates:
+Stuff in `options.context` becomes available in all templates:
 
 ```js
 const options = {
@@ -171,13 +267,13 @@ const options = {
 
 const templates = {
   'hello.md': '_Hello world!_',
-  'index.html': '{{$.md($.render($.tree.partials["hello.md"]))}}',
+  'index.html': '{{$.md($.render($.tree.partials["hello.md"], $))}}',
 }
 ```
 
-### `renderSettings(settings)`
+#### `renderSettings(settings)`
 
-Takes settings acquired from `createSettings` and renders `settings.context.entries` into static results. The output has the same shape as the templates passed to `createSettings`.
+Takes settings acquired from [`createSettings`](#createsettingstemplates-options) and renders `settings.context.entries` into static results. The output has the same shape as the templates passed to `createSettings`.
 
 ```js
 const templates = {
@@ -200,12 +296,12 @@ const _output = {
 }
 ```
 
-To skip templates, modify `settings.context.entries` before calling `renderSettings`:
+To skip templates, modify `settings.context.entries` before calling [`renderSettings`](#rendersettingssettings):
 
 ```js
 const {context: {entries}} = settings
 for (const path in entries) {
-  if (/^partials/.test(path)) delete entries[path]
+  if (/^partial/.test(path)) delete entries[path]
 }
 ```
 
