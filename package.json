@@ -1,10 +1,10 @@
 {
   "name": "statil",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Lightweight templating library and static site generator",
   "main": "lib/statil",
   "bin": {
-    "statil": "bin/statil"
+    "statil": "bin/cli.js"
   },
   "author": "Mitranim",
   "license": "MIT",
