@@ -6,6 +6,8 @@ If you're unfamiliar with the idea of a static site, it's a site pre-rendered fr
 
 For use with `gulp`, see [`gulp-statil`](https://github.com/Mitranim/gulp-statil).
 
+Statil is intended for templates that embed JS. For the _opposite_, when you want to write templates primarily in JavaScript, using JSX, see the spiritually related library [Papyre](https://github.com/Mitranim/papyre).
+
 ## TOC
 
 * [Description](#description)
@@ -332,3 +334,7 @@ statil --help
 # compile directory
 statil --src src/html --out dist
 ```
+
+## Misc
+
+I'm receptive to suggestions. If this library _almost_ satisfies you but needs changes, open an issue or chat me up. Contacts: https://mitranim.com/#contacts
