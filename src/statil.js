@@ -1,16 +1,3 @@
-'use strict'
-
-/**
- * Loosely based on lodash's _.template, with various modifications:
- *
- *   * always strict mode
- *   * no `with` or implicit globals
- *   * different option naming
- *   * better delimiters: {{ expression }} and << statement >>
- *   * no escape delimiter, escape manually
- *   * slightly more readable compiled code
- */
-
 const defaultSettings = {
   reExpression: /{{\s*([\s\S]+?)\s*}}/g,
   reStatement: /<<\s*([\s\S]+?)\s*>>/g,
@@ -35,8 +22,7 @@ function escapeSpecialChar(char) {
   return specialEscapes[char] ? `\\${specialEscapes[char]}` : char
 }
 
-exports.compileTemplate = compileTemplate
-function compileTemplate(string, settings) {
+export function compileTemplate(string, settings) {
   if (typeof string !== 'string') {
     throw Error(`Expected a template string, got ${string}`)
   }
@@ -49,7 +35,7 @@ function compileTemplate(string, settings) {
   // Compile the regexp to match each delimiter.
   const reDelimiters = RegExp(`${[
     settings.reExpression.source,
-    settings.reStatement.source
+    settings.reStatement.source,
   ].join('|')}|$`, 'g')
 
   let index = 0
