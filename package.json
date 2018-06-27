@@ -1,6 +1,6 @@
 {
   "name": "statil",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "String templating function, similar to lodash/template.",
   "main": "statil-cjs.js",
   "module": "statil-mjs.js",

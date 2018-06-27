@@ -2,7 +2,6 @@ const defaultSettings = {
   reExpression: /{{\s*([\s\S]+?)\s*}}/g,
   reStatement: /<<\s*([\s\S]+?)\s*>>/g,
   contextName: '$',
-  context: undefined,
 }
 
 // Used to match unescaped characters in compiled string literals
@@ -27,8 +26,7 @@ export function compileTemplate(string, settings) {
     throw Error(`Expected a template string, got ${string}`)
   }
 
-  const context = patch(defaultSettings.context, settings ? settings.context : undefined)
-  settings = patch(defaultSettings, settings, {context})
+  settings = patch(defaultSettings, settings)
 
   let codeBody = ''
 
@@ -61,19 +59,23 @@ export function compileTemplate(string, settings) {
   })
 
   const {contextName} = settings
-  const code =
-`return function compiledTemplate(${contextName}) {'use strict'
-${contextName} = Object.assign({}, __context, ${contextName})
+  return Function(['locals'], `'use strict'
+
+var ${contextName} = {}
+if (locals) for (var key in locals) ${contextName}[key] = locals[key]
+
 var __out = ''
 function __append(val) {if (val != null) __out += val}
-${codeBody}return __out
-}`
 
-  return Function(['__context'], code)(context)
+${codeBody}
+return __out`)
 }
 
-function patch(...args) {
-  return Object.assign({}, ...args.filter(isDict))
+function patch(left, right) {
+  const out = {}
+  if (isDict(left)) for (const key in left) out[key] = left[key]
+  if (isDict(right)) for (const key in right) out[key] = right[key]
+  return out
 }
 
 function isDict(value) {

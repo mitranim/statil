@@ -21,9 +21,12 @@ const {code: cjsCode} = babel.transform(code, {
   presets: [
     ['@babel/preset-env', {
       targets: {browsers: ['> 1%']},
-      modules: 'commonjs',
+      modules: false,
       loose: true,
     }],
+  ],
+  plugins: [
+    ['@babel/plugin-transform-modules-commonjs', {strict: true}],
   ],
 })
 
