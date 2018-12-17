@@ -14,7 +14,7 @@ Differences from `lodash/template`:
   * better option naming
   * slightly more readable compiled code
 
-Statil is intended for templates that embed JS. For the _opposite_, when you want to write templates primarily in JavaScript, using JSX, see the spiritually related library [Papyre](https://github.com/Mitranim/papyre).
+Statil is intended for templates that embed JS. For the _opposite_, when you want to write templates primarily in JavaScript, using JSX, see the spiritually related library [Papyre](https://github.com/mitranim/papyre).
 
 ## Why
 
@@ -42,8 +42,8 @@ const templateStr = `Hello {{$.name}}!`
 
 // Optional settings
 const options = void {
-  reExpression: /{{\s*([\s\S]+?)\s*}}/g,
-  reStatement: /<<\s*([\s\S]+?)\s*>>/g,
+  expressionRegexp: /{{\s*([\s\S]+?)\s*}}/g,
+  statementRegexp: /<<\s*([\s\S]+?)\s*>>/g,
   contextName: '$',
 }
 
